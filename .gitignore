@@ -1,0 +1,38 @@
+# Byte-compiled / optimized files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# Python tooling
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+coverage.xml
+.coverage*
+
+# Environments
+.env
+.venv/
+venv/
+env/
+
+# Django artifacts
+db.sqlite3
+staticfiles/
+media/
+
+# IDEs and editors
+.DS_Store
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Local overrides
+settings_local.py

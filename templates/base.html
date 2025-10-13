@@ -1,0 +1,21 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>{% block title %}Vehicle Tracking Management System{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="{% static 'tracking/css/map.css' %}">
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <header class="vtms-header">
+        <h1>Vehicle Tracking Management System</h1>
+        <p class="vtms-tagline">Monitor fleet activity in real time with simulated data.</p>
+    </header>
+    <main class="vtms-container">
+        {% block content %}{% endblock %}
+    </main>
+    {% block body_scripts %}{% endblock %}
+</body>
+</html>

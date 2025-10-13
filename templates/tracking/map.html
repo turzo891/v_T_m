@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block extra_head %}
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+{% endblock %}
+
+{% block content %}
+    <section class="tracking-layout">
+        <aside class="tracking-panel">
+            <h2>Filters</h2>
+            <div class="filter-group" id="status-filter" data-filter-type="status">
+                <h3>Status</h3>
+                <button type="button" class="filter-button is-active" data-filter="">All</button>
+                {% for status in status_filters %}
+                    <button type="button" class="filter-button" data-filter="{{ status }}">{{ status }}</button>
+                {% endfor %}
+            </div>
+            <div class="filter-group" id="fleet-filter" data-filter-type="fleet_area">
+                <h3>Route</h3>
+                <button type="button" class="filter-button is-active" data-filter="">All</button>
+                {% for fleet in fleet_filters %}
+                    <button type="button" class="filter-button" data-filter="{{ fleet }}">{{ fleet }}</button>
+                {% endfor %}
+            </div>
+            <div class="panel-help">
+                <p>Use the controls to highlight vehicles that match a specific status or region. The map and details refresh automatically.</p>
+            </div>
+            <div class="overlay-group" id="overlay-controls">
+                <h3>Overlays</h3>
+                <label class="overlay-toggle">
+                    <input type="checkbox" data-overlay="geofences" checked>
+                    <span>Geofences</span>
+                </label>
+                <label class="overlay-toggle">
+                    <input type="checkbox" data-overlay="depots" checked>
+                    <span>Depots</span>
+                </label>
+                <label class="overlay-toggle">
+                    <input type="checkbox" data-overlay="traffic" checked>
+                    <span>Traffic</span>
+                </label>
+            </div>
+        </aside>
+        <section class="tracking-map-section">
+            <div id="map" class="tracking-map" aria-live="polite">
+                <div id="map-legend" class="map-legend" aria-hidden="true"></div>
+            </div>
+            <section class="tracking-details" aria-live="polite">
+                <h2>Vehicle Snapshot</h2>
+                <p class="tracking-updated" id="last-updated">Last update: {{ generation_time }}</p>
+                <p class="tracking-traffic-meta" id="traffic-meta">
+                    Traffic source: {{ traffic_source }} &mdash; refreshed {{ traffic_generated }}
+                </p>
+                <div id="vehicle-table" class="tracking-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Vehicle</th>
+                                <th>Status</th>
+                                <th>Speed (km/h)</th>
+                                <th>Route</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for vehicle in vehicles %}
+                            <tr>
+                                <td>{{ vehicle.name }}</td>
+                                <td>{{ vehicle.status }}</td>
+                                <td>{{ vehicle.speed_kmh }}</td>
+                                <td>{{ vehicle.fleet_area }}</td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </section>
+    </section>
+
+    <script type="application/json" id="initial-vehicle-data">{{ vehicles_json|safe }}</script>
+    <script type="application/json" id="initial-map-center">{{ center_json|safe }}</script>
+    <script type="application/json" id="initial-generation-time">{{ generation_time_json|safe }}</script>
+    <script type="application/json" id="initial-geofences">{{ geofences_json|safe }}</script>
+    <script type="application/json" id="initial-depots">{{ depots_json|safe }}</script>
+    <script type="application/json" id="initial-route-catalog">{{ route_catalog_json|safe }}</script>
+    <script type="application/json" id="initial-map-legend">{{ legend_json|safe }}</script>
+    <script type="application/json" id="initial-traffic-overlay">{{ traffic_features_json|safe }}</script>
+    <script type="application/json" id="initial-traffic-meta">{{ traffic_meta_json|safe }}</script>
+{% endblock %}
+
+{% block body_scripts %}
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+    <script src="{% static 'tracking/js/map.js' %}"></script>
+{% endblock %}
