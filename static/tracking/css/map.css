@@ -79,6 +79,12 @@ body {
     color: #fff;
 }
 
+.filter-button.is-hidden {
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+}
+
 .panel-help {
     margin-top: 1.5rem;
     font-size: 0.85rem;

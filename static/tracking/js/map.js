@@ -416,6 +416,28 @@
         label.textContent = `Last update: ${display}`;
     }
 
+    function updateRouteFilterButtons(selectedValue) {
+        const routeGroup = document.querySelector(
+            ".filter-group[data-filter-type='fleet_area']"
+        );
+        if (!routeGroup) {
+            return;
+        }
+        const normalized = selectedValue || "";
+        routeGroup.querySelectorAll(".filter-button").forEach((button) => {
+            const buttonValue = button.dataset.filter || "";
+            if (!normalized) {
+                button.classList.remove("is-hidden");
+                return;
+            }
+            if (buttonValue === normalized || buttonValue === "") {
+                button.classList.remove("is-hidden");
+            } else {
+                button.classList.add("is-hidden");
+            }
+        });
+    }
+
     function updateTable(vehicles, highlightedIds) {
         const tableBody = document.querySelector("#vehicle-table tbody");
         if (!tableBody) {
@@ -588,9 +610,15 @@
                     filterState[filterKey] = target.dataset.filter || "";
                 }
 
+                if (filterKey === "fleet_area") {
+                    updateRouteFilterButtons(filterState.fleet_area);
+                }
+
                 refreshInterface();
             });
         });
+
+        updateRouteFilterButtons(filterState.fleet_area);
     }
 
     const POLL_INTERVAL_MS = 5000;

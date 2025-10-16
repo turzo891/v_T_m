@@ -15,12 +15,22 @@ Fleet monitoring demo built with Django and Leaflet that simulates real-time veh
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install "Django==4.2.*"
+pip install -r requirements.txt
 python3 manage.py migrate          # optional – only required for admin/auth
 python3 manage.py runserver
 ```
 
 Open `http://127.0.0.1:8000/` to view the dashboard. The browser polls the backend every few seconds to refresh vehicle positions and traffic data.
+
+The `requirements.txt` file locks the project to Django 4.2 LTS so that installations always use a supported long-term support release.
+
+## Dependencies
+
+- `Django` 4.2 LTS
+- `asgiref`
+- `sqlparse`
+- `tzdata` (only required on Windows)
+- SQLite is used automatically; no extra driver is required.
 
 ### Development Utilities
 
