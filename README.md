@@ -16,7 +16,11 @@ Fleet monitoring demo built with Django and Leaflet that simulates real-time veh
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-python3 manage.py migrate          # optional – only required for admin/auth
+cp .env .env.local && nano .env.local       # customise secrets & credentials
+# If using PostgreSQL, create the database/user and install extensions:
+#   psql -f scripts/postgres_init.sql
+# Then apply migrations:
+python3 manage.py migrate
 python3 manage.py runserver
 ```
 
@@ -38,6 +42,21 @@ The `requirements.txt` file locks the project to Django 4.2 LTS so that installa
 - `python3 manage.py test tracking` – Run the tracking app unit tests.
 - `python3 manage.py createsuperuser` – (Optional) enable Django admin if you extend the data model.
 
+### Environment Variables
+
+Configuration is sourced from `.env` at the project root (read automatically by `settings.py`). Key entries:
+
+| Variable | Description |
+| --- | --- |
+| `DJANGO_SECRET_KEY` | Django secret key (generate unique value per deployment). |
+| `DJANGO_DEBUG` | `True/False` flag for debug mode. |
+| `DJANGO_ALLOWED_HOSTS` | Comma-separated hostnames allowed by Django. |
+| `DB_ENGINE` / `DB_*` | Database backend and connection details. Defaults to SQLite when unset; set to `django.db.backends.postgresql` plus credentials for Postgres. |
+| `TOMTOM_API_KEY` | API key for live traffic data. |
+| `TRAFFIC_PROVIDER` / `TRAFFIC_TIMEOUT_SECONDS` | Traffic integration provider and timeout. |
+
+Create environment-specific overrides by copying `.env` into `.env.local` (excluded from version control) and updating the values.
+
 ## Project Layout
 
 | Path | Purpose |
@@ -48,6 +67,7 @@ The `requirements.txt` file locks the project to Django 4.2 LTS so that installa
 | `tracking/traffic.py` | Traffic feed integration (TomTom + fallback data). |
 | `templates/` | HTML templates with Leaflet map view (`tracking/map.html`). |
 | `static/` | Front-end assets (`tracking/js/map.js`, `tracking/css/map.css`). |
+| `scripts/postgres_init.sql` | Helper script to create the Postgres database/user. |
 | `VERSION` | Current project version string. |
 
 ## Version Control Policy

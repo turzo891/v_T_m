@@ -204,6 +204,13 @@ VEHICLE_PROFILES: Sequence[Dict[str, str]] = [
         "device_id": "VTMS-DHK-201",
         "driver": "Rahim Khan",
         "vehicle_type": "Refrigerated Truck",
+        "driver_mobile": "+8801712345670",
+        "driver_license": "DL-4587321",
+        "route_history": [
+            "Hazrat Shahjalal Intl Airport \u2192 Motijheel Commercial Area",
+            "Narayanganj River Port \u2192 Gulshan 2",
+            "Mirpur DOHS \u2192 Bangladesh Secretariat",
+        ],
     },
     {
         "callsign": "VT-202",
@@ -211,6 +218,13 @@ VEHICLE_PROFILES: Sequence[Dict[str, str]] = [
         "device_id": "VTMS-DHK-202",
         "driver": "Shila Akter",
         "vehicle_type": "Box Van",
+        "driver_mobile": "+8801712345671",
+        "driver_license": "DL-9374152",
+        "route_history": [
+            "Mirpur DOHS \u2192 Bangladesh Secretariat",
+            "Uttara Logistics Hub \u2192 Tejgaon Service Yard",
+            "Hazrat Shahjalal Intl Airport \u2192 Motijheel Commercial Area",
+        ],
     },
     {
         "callsign": "VT-203",
@@ -218,6 +232,13 @@ VEHICLE_PROFILES: Sequence[Dict[str, str]] = [
         "device_id": "VTMS-DHK-203",
         "driver": "Nazmul Islam",
         "vehicle_type": "Flatbed",
+        "driver_mobile": "+8801712345672",
+        "driver_license": "DL-6718354",
+        "route_history": [
+            "Narayanganj River Port \u2192 Gulshan 2",
+            "Mirpur DOHS \u2192 Bangladesh Secretariat",
+            "Tejgaon Service Yard \u2192 Motijheel Commercial Area",
+        ],
     },
     {
         "callsign": "VT-204",
@@ -225,6 +246,13 @@ VEHICLE_PROFILES: Sequence[Dict[str, str]] = [
         "device_id": "VTMS-DHK-204",
         "driver": "Farzana Chowdhury",
         "vehicle_type": "Tanker",
+        "driver_mobile": "+8801712345673",
+        "driver_license": "DL-2847619",
+        "route_history": [
+            "Hazrat Shahjalal Intl Airport \u2192 Motijheel Commercial Area",
+            "Kanchpur Bridge \u2192 Tejgaon Service Yard",
+            "Narayanganj River Port \u2192 Gulshan 2",
+        ],
     },
     {
         "callsign": "VT-205",
@@ -232,6 +260,13 @@ VEHICLE_PROFILES: Sequence[Dict[str, str]] = [
         "device_id": "VTMS-DHK-205",
         "driver": "Masud Karim",
         "vehicle_type": "Mini Truck",
+        "driver_mobile": "+8801712345674",
+        "driver_license": "DL-1947538",
+        "route_history": [
+            "Mirpur DOHS \u2192 Bangladesh Secretariat",
+            "Hazrat Shahjalal Intl Airport \u2192 Motijheel Commercial Area",
+            "Uttara Logistics Hub \u2192 Tejgaon Service Yard",
+        ],
     },
     {
         "callsign": "VT-206",
@@ -239,6 +274,13 @@ VEHICLE_PROFILES: Sequence[Dict[str, str]] = [
         "device_id": "VTMS-DHK-206",
         "driver": "Sadia Rahman",
         "vehicle_type": "Delivery Van",
+        "driver_mobile": "+8801712345675",
+        "driver_license": "DL-8572034",
+        "route_history": [
+            "Uttara Logistics Hub \u2192 Tejgaon Service Yard",
+            "Mirpur DOHS \u2192 Bangladesh Secretariat",
+            "Narayanganj River Port \u2192 Gulshan 2",
+        ],
     },
     {
         "callsign": "VT-207",
@@ -246,6 +288,13 @@ VEHICLE_PROFILES: Sequence[Dict[str, str]] = [
         "device_id": "VTMS-DHK-207",
         "driver": "Tariq Ahmed",
         "vehicle_type": "Covered Van",
+        "driver_mobile": "+8801712345676",
+        "driver_license": "DL-5043782",
+        "route_history": [
+            "Kanchpur Bridge \u2192 Tejgaon Service Yard",
+            "Narayanganj River Port \u2192 Gulshan 2",
+            "Hazrat Shahjalal Intl Airport \u2192 Motijheel Commercial Area",
+        ],
     },
     {
         "callsign": "VT-208",
@@ -253,6 +302,13 @@ VEHICLE_PROFILES: Sequence[Dict[str, str]] = [
         "device_id": "VTMS-DHK-208",
         "driver": "Mitu Sultana",
         "vehicle_type": "SUV",
+        "driver_mobile": "+8801712345677",
+        "driver_license": "DL-6194725",
+        "route_history": [
+            "Mirpur DOHS \u2192 Bangladesh Secretariat",
+            "Hazrat Shahjalal Intl Airport \u2192 Motijheel Commercial Area",
+            "Narayanganj River Port \u2192 Gulshan 2",
+        ],
     },
     {
         "callsign": "VT-209",
@@ -260,6 +316,13 @@ VEHICLE_PROFILES: Sequence[Dict[str, str]] = [
         "device_id": "VTMS-DHK-209",
         "driver": "Abid Hossain",
         "vehicle_type": "Motorbike",
+        "driver_mobile": "+8801712345678",
+        "driver_license": "DL-7852046",
+        "route_history": [
+            "Tejgaon Service Yard \u2192 Motijheel Commercial Area",
+            "Mirpur DOHS \u2192 Bangladesh Secretariat",
+            "Hazrat Shahjalal Intl Airport \u2192 Motijheel Commercial Area",
+        ],
     },
     {
         "callsign": "VT-210",
@@ -267,6 +330,13 @@ VEHICLE_PROFILES: Sequence[Dict[str, str]] = [
         "device_id": "VTMS-DHK-210",
         "driver": "Shamima Rupa",
         "vehicle_type": "Pickup",
+        "driver_mobile": "+8801712345679",
+        "driver_license": "DL-9406851",
+        "route_history": [
+            "Uttara Logistics Hub \u2192 Tejgaon Service Yard",
+            "Narayanganj River Port \u2192 Gulshan 2",
+            "Mirpur DOHS \u2192 Bangladesh Secretariat",
+        ],
     },
 ]
 
@@ -506,8 +576,11 @@ def generate_vehicle_data(count: int = 10) -> List[Dict]:
                     "license_plate": profile["license_plate"],
                     "device_id": profile["device_id"],
                     "driver": profile["driver"],
+                    "driver_mobile": profile.get("driver_mobile"),
+                    "driver_license": profile.get("driver_license"),
                     "vehicle_type": profile["vehicle_type"],
                 },
+                "route_history": list(profile.get("route_history", [])),
                 "route": {
                     "id": route["id"],
                     "name": route["name"],

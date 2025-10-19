@@ -10,24 +10,75 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
-from pathlib import Path
 import os
+from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+_env_keys_from_files: set[str] = set()
 
+
+def _load_env_file(path: Path, *, override: bool = False) -> None:
+    """
+    Lightweight .env loader so deployments can configure settings without
+    additional dependencies (e.g. python-dotenv).
+    """
+    if not path.exists():
+        return
+    try:
+        with path.open("r", encoding="utf-8") as env_file:
+            for raw_line in env_file:
+                line = raw_line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                key, sep, value = line.partition("=")
+                if not sep:
+                    continue
+                key = key.strip()
+                value = value.strip().strip('"').strip("'")
+                if override:
+                    if key in os.environ and key not in _env_keys_from_files:
+                        continue
+                    os.environ[key] = value
+                    _env_keys_from_files.add(key)
+                else:
+                    if key not in os.environ:
+                        os.environ[key] = value
+                        _env_keys_from_files.add(key)
+    except OSError:
+        # Silently continue if we cannot read the env file; callers can
+        # still rely on process-level environment variables.
+        pass
+
+
+_load_env_file(BASE_DIR / ".env")
+_load_env_file(BASE_DIR / ".env.local", override=True)
+
+
+def _get_bool_env(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-#l-k9qkr9njo4xh60=y-#-pe+lv-fm44ddzm#*mas7m3w0p=gy'
+SECRET_KEY = os.getenv(
+    "DJANGO_SECRET_KEY", "django-insecure-#l-k9qkr9njo4xh60=y-#-pe+lv-fm44ddzm#*mas7m3w0p=gy"
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # DEBUG = False
-DEBUG = True
+DEBUG = _get_bool_env("DJANGO_DEBUG", True)
 
-ALLOWED_HOSTS = []
+_allowed_hosts = os.getenv("DJANGO_ALLOWED_HOSTS", "")
+ALLOWED_HOSTS = [host.strip() for host in _allowed_hosts.split(",") if host.strip()]
+if DEBUG and not ALLOWED_HOSTS:
+    ALLOWED_HOSTS = ["localhost", "127.0.0.1", "[::1]"]
 
 
 # Application definition
@@ -78,10 +129,20 @@ WSGI_APPLICATION = 'vehicle_tracking_management_system.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': os.getenv('DB_ENGINE', 'django.db.backends.sqlite3'),
+        'NAME': os.getenv('DB_NAME', str(BASE_DIR / 'db.sqlite3')),
+        'USER': os.getenv('DB_USER', ''),
+        'PASSWORD': os.getenv('DB_PASSWORD', ''),
+        'HOST': os.getenv('DB_HOST', ''),
+        'PORT': os.getenv('DB_PORT', ''),
     }
 }
+
+if DATABASES['default']['ENGINE'] == 'django.db.backends.sqlite3':
+    DATABASES['default'] = {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': os.getenv('DB_NAME', str(BASE_DIR / 'db.sqlite3')),
+    }
 
 
 # Password validation

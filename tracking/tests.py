@@ -29,8 +29,10 @@ class TrackingServicesTests(TestCase):
 
         sample = vehicles[0]
         self.assertIn("identifiers", sample)
-        for key in ("license_plate", "device_id", "driver"):
+        for key in ("license_plate", "device_id", "driver", "driver_mobile", "driver_license"):
             self.assertIn(key, sample["identifiers"])
+        self.assertIn("route_history", sample)
+        self.assertIsInstance(sample["route_history"], list)
 
         raw_point = sample["raw_location"]
         filtered_point = sample["location"]
@@ -91,3 +93,6 @@ class VehicleAPITests(TestCase):
         self.assertIn("upcoming", vehicle)
         self.assertIn("raw_location", vehicle)
         self.assertIn("location", vehicle)
+        self.assertIn("route_history", vehicle)
+        self.assertIn("driver_mobile", vehicle["identifiers"])
+        self.assertIn("driver_license", vehicle["identifiers"])

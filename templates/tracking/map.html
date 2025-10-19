@@ -11,6 +11,18 @@
     <section class="tracking-layout">
         <aside class="tracking-panel">
             <h2>Filters</h2>
+            <div class="filter-group">
+                <h3>Vehicle</h3>
+                <label for="vehicle-search" class="visually-hidden">Search vehicle</label>
+                <input
+                    type="search"
+                    id="vehicle-search"
+                    class="filter-search"
+                    name="vehicle-search"
+                    placeholder="Search by name, plate, driver..."
+                    autocomplete="off"
+                >
+            </div>
             <div class="filter-group" id="status-filter" data-filter-type="status">
                 <h3>Status</h3>
                 <button type="button" class="filter-button is-active" data-filter="">All</button>
@@ -66,8 +78,12 @@
                         </thead>
                         <tbody>
                         {% for vehicle in vehicles %}
-                            <tr>
-                                <td>{{ vehicle.name }}</td>
+                            <tr data-vehicle-id="{{ vehicle.id }}" role="button" tabindex="0" aria-selected="false">
+                                <td>
+                                    <button type="button" class="vehicle-select-button" data-vehicle-id="{{ vehicle.id }}">
+                                        {{ vehicle.name }}
+                                    </button>
+                                </td>
                                 <td>{{ vehicle.status }}</td>
                                 <td>{{ vehicle.speed_kmh }}</td>
                                 <td>{{ vehicle.fleet_area }}</td>
@@ -75,6 +91,29 @@
                         {% endfor %}
                         </tbody>
                     </table>
+                </div>
+                <div id="vehicle-detail-card" class="vehicle-detail-card" aria-live="polite">
+                    <h3>Driver Details</h3>
+                    <p id="vehicle-detail-title" class="vehicle-detail-title"></p>
+                    <p id="vehicle-detail-empty">Select a vehicle to view driver contact information and recent routes.</p>
+                    <dl id="vehicle-detail-grid" class="vehicle-detail-grid" hidden>
+                        <div class="vehicle-detail-field">
+                            <dt>Driver</dt>
+                            <dd id="vehicle-detail-driver">—</dd>
+                        </div>
+                        <div class="vehicle-detail-field">
+                            <dt>Mobile</dt>
+                            <dd id="vehicle-detail-mobile">—</dd>
+                        </div>
+                        <div class="vehicle-detail-field">
+                            <dt>License No.</dt>
+                            <dd id="vehicle-detail-license">—</dd>
+                        </div>
+                    </dl>
+                    <div id="vehicle-detail-history" class="vehicle-detail-history" hidden>
+                        <h4>Route History</h4>
+                        <ul id="vehicle-detail-history-list"></ul>
+                    </div>
                 </div>
             </section>
         </section>

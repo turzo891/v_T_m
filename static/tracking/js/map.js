@@ -6,6 +6,22 @@
         return;
     }
 
+    const detailCard = document.getElementById("vehicle-detail-card");
+    const detailTitle = document.getElementById("vehicle-detail-title");
+    const detailEmpty = document.getElementById("vehicle-detail-empty");
+    const detailGrid = document.getElementById("vehicle-detail-grid");
+    const detailDriver = document.getElementById("vehicle-detail-driver");
+    const detailMobile = document.getElementById("vehicle-detail-mobile");
+    const detailLicense = document.getElementById("vehicle-detail-license");
+    const detailHistory = document.getElementById("vehicle-detail-history");
+    const detailHistoryList = document.getElementById("vehicle-detail-history-list");
+    if (detailTitle) {
+        detailTitle.hidden = true;
+    }
+    if (detailCard && !detailCard.hasAttribute("tabindex")) {
+        detailCard.setAttribute("tabindex", "-1");
+    }
+
     function parseJSONContent(id) {
         const el = document.getElementById(id);
         if (!el) {
@@ -85,6 +101,7 @@
     const filterState = {
         status: "",
         fleet_area: "",
+        search: "",
     };
 
     const palette = ["#2563eb", "#0f766e", "#9333ea", "#dc2626", "#d97706"];
@@ -99,6 +116,7 @@
         depots: true,
         traffic: true,
     };
+    let selectedVehicleId = null;
 
     function resolveColor(key) {
         if (!key) {
@@ -318,6 +336,12 @@
             identifiers.license_plate
                 ? `Plate: ${identifiers.license_plate}`
                 : null,
+            identifiers.driver_mobile
+                ? `Mobile: ${identifiers.driver_mobile}`
+                : null,
+            identifiers.driver_license
+                ? `License: ${identifiers.driver_license}`
+                : null,
             identifiers.driver ? `Driver: ${identifiers.driver}` : null,
             identifiers.device_id ? `Device: ${identifiers.device_id}` : null,
             identifiers.vehicle_type
@@ -391,6 +415,183 @@
         label.textContent = `Traffic source: ${meta.source || "unknown"} - refreshed ${readable}`;
     }
 
+    function renderVehicleDetails(vehicle) {
+        if (!detailCard || !detailEmpty || !detailGrid) {
+            return;
+        }
+        if (!vehicle) {
+            if (detailTitle) {
+                detailTitle.textContent = "";
+                detailTitle.hidden = true;
+            }
+            detailEmpty.hidden = false;
+            detailGrid.hidden = true;
+            if (detailHistory) {
+                detailHistory.hidden = true;
+            }
+            if (detailDriver) {
+                detailDriver.textContent = "—";
+            }
+            if (detailMobile) {
+                detailMobile.textContent = "—";
+            }
+            if (detailLicense) {
+                detailLicense.textContent = "—";
+            }
+            if (detailHistoryList) {
+                detailHistoryList.innerHTML = "";
+            }
+            return;
+        }
+
+        if (detailTitle) {
+            detailTitle.textContent = `${vehicle.name} • ${vehicle.fleet_area}`;
+            detailTitle.hidden = false;
+        }
+        detailEmpty.hidden = true;
+        detailGrid.hidden = false;
+
+        if (detailDriver) {
+            detailDriver.textContent = vehicle.identifiers?.driver || "—";
+        }
+        if (detailMobile) {
+            detailMobile.textContent = vehicle.identifiers?.driver_mobile || "—";
+        }
+        if (detailLicense) {
+            detailLicense.textContent = vehicle.identifiers?.driver_license || "—";
+        }
+
+        if (detailHistory && detailHistoryList) {
+            const history = Array.isArray(vehicle.route_history)
+                ? vehicle.route_history
+                : [];
+            if (history.length) {
+                detailHistory.hidden = false;
+                detailHistoryList.innerHTML = history
+                    .map((entry) => `<li>${entry}</li>`)
+                    .join("");
+            } else {
+                detailHistory.hidden = false;
+                detailHistoryList.innerHTML =
+                    "<li>No route history available.</li>";
+            }
+        }
+    }
+
+    function registerTableInteractions() {
+        const tableBody = document.querySelector("#vehicle-table tbody");
+        if (!tableBody) {
+            return;
+        }
+        tableBody.querySelectorAll("tr[data-vehicle-id]").forEach((row) => {
+            const vehicleId = Number(row.dataset.vehicleId);
+            if (!Number.isFinite(vehicleId)) {
+                return;
+            }
+            const handleSelect = () => {
+                selectVehicle(vehicleId);
+            };
+            row.addEventListener("click", handleSelect);
+            row.addEventListener("keydown", (event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    handleSelect();
+                }
+            });
+            const button = row.querySelector(".vehicle-select-button");
+            if (button) {
+                button.addEventListener("click", (event) => {
+                    event.stopPropagation();
+                    handleSelect();
+                });
+            }
+        });
+    }
+
+    function focusTableRow(vehicleId) {
+        const selector = `#vehicle-table tbody tr[data-vehicle-id="${vehicleId}"]`;
+        const row = document.querySelector(selector);
+        if (!row) {
+            return;
+        }
+        if (typeof row.scrollIntoView === "function") {
+            row.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        }
+        if (typeof row.focus === "function") {
+            window.requestAnimationFrame(() => {
+                row.focus();
+            });
+        }
+    }
+
+    function focusDetailCard() {
+        if (!detailCard) {
+            return;
+        }
+        if (typeof detailCard.scrollIntoView === "function") {
+            detailCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }
+        const focusTarget =
+            detailCard.querySelector(".vehicle-select-button") ||
+            detailCard.querySelector("button") ||
+            detailCard;
+        if (focusTarget && typeof focusTarget.focus === "function") {
+            window.requestAnimationFrame(() => {
+                focusTarget.focus({ preventScroll: true });
+            });
+        }
+    }
+
+    function selectVehicle(vehicleId, options = {}) {
+        const { focusTable = false } = options;
+        const numericId = Number(vehicleId);
+        if (!Number.isFinite(numericId)) {
+            return;
+        }
+        const vehicle = latestVehicles.find((entry) => entry.id === numericId);
+        if (!vehicle) {
+            if (selectedVehicleId !== null) {
+                selectedVehicleId = null;
+                renderVehicleDetails(null);
+                refreshInterface();
+            }
+            return;
+        }
+        if (selectedVehicleId === numericId) {
+            renderVehicleDetails(vehicle);
+            if (focusTable) {
+                focusTableRow(numericId);
+            }
+            return;
+        }
+        selectedVehicleId = numericId;
+        renderVehicleDetails(vehicle);
+        refreshInterface();
+        if (focusTable) {
+            focusTableRow(numericId);
+        }
+        focusDetailCard();
+    }
+
+    function matchesSearch(vehicle) {
+        if (!filterState.search) {
+            return true;
+        }
+        const identifiers = vehicle.identifiers || {};
+        const fields = [
+            vehicle.name,
+            identifiers.license_plate,
+            identifiers.driver,
+            identifiers.device_id,
+            identifiers.vehicle_type,
+        ];
+        return fields
+            .filter((value) => typeof value === "string" && value)
+            .some((value) =>
+                value.toLowerCase().includes(filterState.search)
+            );
+    }
+
     function applyFilters(vehicles) {
         return vehicles.filter((vehicle) => {
             const statusMatch =
@@ -398,7 +599,8 @@
             const fleetMatch =
                 !filterState.fleet_area ||
                 vehicle.fleet_area === filterState.fleet_area;
-            return statusMatch && fleetMatch;
+            const searchMatch = matchesSearch(vehicle);
+            return statusMatch && fleetMatch && searchMatch;
         });
     }
 
@@ -438,7 +640,7 @@
         });
     }
 
-    function updateTable(vehicles, highlightedIds) {
+    function updateTable(vehicles, visibleIds) {
         const tableBody = document.querySelector("#vehicle-table tbody");
         if (!tableBody) {
             return;
@@ -452,7 +654,8 @@
 
         const rows = vehicles
             .map((vehicle) => {
-                const isHighlighted = highlightedIds.has(vehicle.id);
+                const isHighlighted = visibleIds.has(vehicle.id);
+                const isSelected = selectedVehicleId === vehicle.id;
                 const routeName =
                     vehicle.route?.name || vehicle.fleet_area || "—";
                 const speedText =
@@ -466,9 +669,17 @@
                 const routeCell = etaText
                     ? `${routeName}<span class="table-eta">ETA ${etaText} min</span>`
                     : routeName;
+                const classNames = [
+                    isHighlighted ? "highlight" : "",
+                    isSelected ? "is-selected" : "",
+                ]
+                    .filter(Boolean)
+                    .join(" ");
+                const ariaSelected = isSelected ? "true" : "false";
+                const selectButton = `<button type="button" class="vehicle-select-button" data-vehicle-id="${vehicle.id}">${vehicle.name}</button>`;
                 return `
-            <tr class="${isHighlighted ? "highlight" : ""}">
-                <td>${vehicle.name}</td>
+            <tr class="${classNames}" data-vehicle-id="${vehicle.id}" role="button" tabindex="0" aria-selected="${ariaSelected}">
+                <td>${selectButton}</td>
                 <td>${vehicle.status}</td>
                 <td>${speedText}</td>
                 <td>${routeCell}</td>
@@ -477,50 +688,75 @@
             .join("");
 
         tableBody.innerHTML = rows;
+        registerTableInteractions();
     }
 
-    function updateMapLayers(allVehicles, highlightedIds) {
+    function updateMapLayers(allVehicles, visibleIds) {
         const activeIds = new Set();
+        const isFilteredView =
+            visibleIds.size > 0 && visibleIds.size !== allVehicles.length;
 
         allVehicles.forEach((vehicle) => {
             const id = vehicle.id;
+            const shouldDisplay = visibleIds.has(id);
             const latLng = [vehicle.location.lat, vehicle.location.lng];
             const color =
                 vehicle.route?.color ||
                 resolveColor(vehicle.fleet_area || vehicle.route?.name || "");
-            const isHighlighted = highlightedIds.has(id);
             const existing = trackedLayers.get(id);
             const trailCoords = toLatLngs(vehicle.trail);
             const upcomingCoords = toLatLngs(vehicle.upcoming);
             const fullRouteCoords = toLatLngs(vehicle.path);
             const routeCoords =
                 upcomingCoords.length >= 2 ? upcomingCoords : fullRouteCoords;
+            const isSelected = selectedVehicleId === id;
+            const emphasise = isFilteredView || isSelected;
+
+            if (!shouldDisplay) {
+                if (existing) {
+                    vehicleCluster.removeLayer(existing.marker);
+                    if (existing.trailLine) {
+                        map.removeLayer(existing.trailLine);
+                    }
+                    if (existing.routeLine) {
+                        map.removeLayer(existing.routeLine);
+                    }
+                    trackedLayers.delete(id);
+                }
+                return;
+            }
 
             const trailOptions = {
                 color,
-                weight: isHighlighted ? 6 : 4,
-                opacity: isHighlighted ? 0.9 : 0.55,
+                weight: isSelected ? 7 : emphasise ? 6 : 4,
+                opacity: isSelected ? 0.95 : emphasise ? 0.9 : 0.55,
                 lineCap: "round",
             };
             const routeOptions = {
                 color,
-                weight: 3,
-                opacity: isHighlighted ? 0.65 : 0.3,
+                weight: isSelected ? 4 : 3,
+                opacity: isSelected ? 0.8 : emphasise ? 0.65 : 0.3,
                 dashArray: "8 10",
             };
 
             if (!existing) {
                 const marker = L.circleMarker(latLng, {
-                    radius: isHighlighted ? 9 : 7.5,
+                    radius: isSelected ? 10.5 : emphasise ? 9 : 7.5,
                     color,
                     weight: 2,
                     fillColor: color,
-                    fillOpacity: isHighlighted ? 0.95 : 0.5,
-                    opacity: isHighlighted ? 1 : 0.6,
+                    fillOpacity: isSelected ? 1 : emphasise ? 0.95 : 0.5,
+                    opacity: isSelected ? 1 : emphasise ? 1 : 0.6,
+                });
+                marker.on("click", () => {
+                    selectVehicle(vehicle.id, { focusTable: true });
                 });
                 vehicleCluster.addLayer(marker);
 
                 marker.bindPopup(buildPopup(vehicle));
+                if (isSelected && typeof marker.bringToFront === "function") {
+                    marker.bringToFront();
+                }
 
                 const trailLine = ensurePolyline(null, trailCoords, trailOptions);
                 const routeLine = ensurePolyline(null, routeCoords, routeOptions);
@@ -531,11 +767,16 @@
                 existing.marker.setStyle({
                     color,
                     fillColor: color,
-                    fillOpacity: isHighlighted ? 0.95 : 0.5,
-                    opacity: isHighlighted ? 1 : 0.6,
+                    fillOpacity: isSelected ? 1 : emphasise ? 0.95 : 0.5,
+                    opacity: isSelected ? 1 : emphasise ? 1 : 0.6,
                 });
-                existing.marker.setRadius(isHighlighted ? 9 : 7.5);
+                existing.marker.setRadius(
+                    isSelected ? 10.5 : emphasise ? 9 : 7.5
+                );
                 existing.marker.setPopupContent(buildPopup(vehicle));
+                if (isSelected && typeof existing.marker.bringToFront === "function") {
+                    existing.marker.bringToFront();
+                }
 
                 existing.trailLine = ensurePolyline(
                     existing.trailLine,
@@ -578,11 +819,26 @@
     }
 
     function refreshInterface(timestamp) {
-        const highlightedVehicles = applyFilters(latestVehicles);
-        const highlightedIds = new Set(highlightedVehicles.map((v) => v.id));
+        const filteredVehicles = applyFilters(latestVehicles);
+        const visibleIds = new Set(filteredVehicles.map((v) => v.id));
 
-        updateMapLayers(latestVehicles, highlightedIds);
-        updateTable(highlightedVehicles, highlightedIds);
+        if (
+            selectedVehicleId !== null &&
+            !visibleIds.has(selectedVehicleId)
+        ) {
+            selectedVehicleId = null;
+            renderVehicleDetails(null);
+        } else if (selectedVehicleId !== null) {
+            const selectedVehicle = latestVehicles.find(
+                (vehicle) => vehicle.id === selectedVehicleId
+            );
+            if (selectedVehicle) {
+                renderVehicleDetails(selectedVehicle);
+            }
+        }
+
+        updateMapLayers(latestVehicles, visibleIds);
+        updateTable(filteredVehicles, visibleIds);
 
         if (timestamp) {
             updateTimestampLabel(timestamp);
@@ -606,19 +862,57 @@
                 target.classList.add("is-active");
 
                 const filterKey = group.dataset.filterType;
-                if (filterKey && Object.prototype.hasOwnProperty.call(filterState, filterKey)) {
-                    filterState[filterKey] = target.dataset.filter || "";
+                const newValue = target.dataset.filter || "";
+                let shouldRefresh = true;
+                if (
+                    filterKey &&
+                    Object.prototype.hasOwnProperty.call(filterState, filterKey)
+                ) {
+                    const previousValue = filterState[filterKey];
+                    if (previousValue === newValue) {
+                        shouldRefresh = false;
+                    } else {
+                        filterState[filterKey] = newValue;
+                        selectedVehicleId = null;
+                        renderVehicleDetails(null);
+                    }
+                }
+
+                if (!filterKey) {
+                    return;
                 }
 
                 if (filterKey === "fleet_area") {
                     updateRouteFilterButtons(filterState.fleet_area);
                 }
 
-                refreshInterface();
+                if (shouldRefresh) {
+                    refreshInterface();
+                }
             });
         });
 
         updateRouteFilterButtons(filterState.fleet_area);
+    }
+
+    function registerSearchControl() {
+        const searchInput = document.getElementById("vehicle-search");
+        if (!searchInput) {
+            return;
+        }
+        if (filterState.search) {
+            searchInput.value = filterState.search;
+        }
+        let debounceId = null;
+        searchInput.addEventListener("input", () => {
+            if (debounceId) {
+                window.clearTimeout(debounceId);
+            }
+            debounceId = window.setTimeout(() => {
+                filterState.search = searchInput.value.trim().toLowerCase();
+                refreshInterface();
+            }, 150);
+        });
     }
 
     const POLL_INTERVAL_MS = 5000;
@@ -666,6 +960,7 @@
     renderDepots(initialDepots);
     renderLegend(legendData);
     registerOverlayControls();
+    registerSearchControl();
     registerFilters();
     refreshInterface(initialTimestamp);
     renderTraffic(initialTrafficFeatures);
