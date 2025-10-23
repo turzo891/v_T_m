@@ -12,10 +12,12 @@ Fleet monitoring demo built with Django and Leaflet that simulates real-time veh
 
 ## Getting Started
 
+The `requirements.txt` file pins Django 4.2 LTS (current long-term support release) along with the supporting packages. Re-run `pip install -r requirements.txt` whenever the file changes.
+
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install "Django==4.2.*"
+pip install -r requirements.txt
 python3 manage.py migrate          # optional – only required for admin/auth
 python3 manage.py runserver
 ```
@@ -27,6 +29,13 @@ Open `http://127.0.0.1:8000/` to view the dashboard. The browser polls the backe
 - `python3 manage.py check` – Django system checks.
 - `python3 manage.py test tracking` – Run the tracking app unit tests.
 - `python3 manage.py createsuperuser` – (Optional) enable Django admin if you extend the data model.
+
+### Map Tiles
+
+Use the **Base Map** dropdown in the sidebar to switch between Mapbox and OpenStreetMap tiles on the fly.
+
+- **Mapbox** – add a public access token to `.env` via `MAPBOX_ACCESS_TOKEN=...` (and optionally `MAPBOX_STYLE_ID`). The Mapbox option only appears when a token is present.
+- **OpenStreetMap** – always available; you can override `OPENSTREET_TILE_URL` or `OPENSTREET_ATTRIBUTION` in `.env` if you serve custom tiles.
 
 ## Project Layout
 

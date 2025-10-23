@@ -10,11 +10,15 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
-from pathlib import Path
 import os
+from pathlib import Path
+
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+load_dotenv(BASE_DIR / ".env")
 
 
 # Quick-start development settings - unsuitable for production
@@ -131,3 +135,14 @@ TRAFFIC_CONFIG = {
     "tomtom_api_key": os.getenv("TOMTOM_API_KEY", ""),
     "timeout_seconds": float(os.getenv("TRAFFIC_TIMEOUT_SECONDS", "4")),
 }
+
+MAPBOX_ACCESS_TOKEN = os.getenv("MAPBOX_ACCESS_TOKEN", "")
+MAPBOX_STYLE_ID = os.getenv("MAPBOX_STYLE_ID", "mapbox/streets-v12")
+OPENSTREET_TILE_URL = os.getenv(
+    "OPENSTREET_TILE_URL",
+    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+)
+OPENSTREET_ATTRIBUTION = os.getenv(
+    "OPENSTREET_ATTRIBUTION",
+    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+)

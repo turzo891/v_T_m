@@ -28,6 +28,17 @@
             <div class="panel-help">
                 <p>Use the controls to highlight vehicles that match a specific status or region. The map and details refresh automatically.</p>
             </div>
+            {% if tile_provider_choices %}
+                <div class="map-provider-group">
+                    <h3>Base Map</h3>
+                    <label class="map-provider-label" for="tile-provider-select">Tile source</label>
+                    <select id="tile-provider-select">
+                        {% for provider in tile_provider_choices %}
+                            <option value="{{ provider.key }}"{% if provider.key == default_tile_provider %} selected{% endif %}>{{ provider.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            {% endif %}
             <div class="overlay-group" id="overlay-controls">
                 <h3>Overlays</h3>
                 <label class="overlay-toggle">
@@ -54,11 +65,22 @@
                 <p class="tracking-traffic-meta" id="traffic-meta">
                     Traffic source: {{ traffic_source }} &mdash; refreshed {{ traffic_generated }}
                 </p>
+                <div class="vehicle-search">
+                    <label for="vehicle-search-input">Search Vehicles</label>
+                    <input
+                        type="search"
+                        id="vehicle-search-input"
+                        name="vehicle-search"
+                        placeholder="Search by vehicle, driver, or mobile number"
+                        autocomplete="off"
+                    >
+                </div>
                 <div id="vehicle-table" class="tracking-table">
                     <table>
                         <thead>
                             <tr>
                                 <th>Vehicle</th>
+                                <th>Driver</th>
                                 <th>Status</th>
                                 <th>Speed (km/h)</th>
                                 <th>Route</th>
@@ -68,6 +90,7 @@
                         {% for vehicle in vehicles %}
                             <tr>
                                 <td>{{ vehicle.name }}</td>
+                                <td>{{ vehicle.identifiers.driver|default:"—" }}</td>
                                 <td>{{ vehicle.status }}</td>
                                 <td>{{ vehicle.speed_kmh }}</td>
                                 <td>{{ vehicle.fleet_area }}</td>
@@ -75,6 +98,38 @@
                         {% endfor %}
                         </tbody>
                     </table>
+                </div>
+                <div id="vehicle-detail-card" class="vehicle-detail-card" aria-live="polite">
+                    <h3>Driver Details</h3>
+                    <p id="vehicle-detail-empty" class="vehicle-detail-empty">
+                        Select a vehicle to view driver information.
+                    </p>
+                    <div id="vehicle-detail-content" class="vehicle-detail-content" hidden>
+                        <dl class="vehicle-detail-list">
+                            <div>
+                                <dt>Driver</dt>
+                                <dd id="detail-driver-name">—</dd>
+                            </div>
+                            <div>
+                                <dt>Mobile Number</dt>
+                                <dd id="detail-driver-phone">—</dd>
+                            </div>
+                            <div>
+                                <dt>License Number</dt>
+                                <dd id="detail-driver-license">—</dd>
+                            </div>
+                            <div>
+                                <dt>Current Route</dt>
+                                <dd id="detail-route-name">—</dd>
+                            </div>
+                        </dl>
+                        <div class="vehicle-route-history">
+                            <h4>Route History</h4>
+                            <ol id="detail-route-history" class="vehicle-route-history-list">
+                                <li class="route-history-empty">No route history available.</li>
+                            </ol>
+                        </div>
+                    </div>
                 </div>
             </section>
         </section>
@@ -89,6 +144,7 @@
     <script type="application/json" id="initial-map-legend">{{ legend_json|safe }}</script>
     <script type="application/json" id="initial-traffic-overlay">{{ traffic_features_json|safe }}</script>
     <script type="application/json" id="initial-traffic-meta">{{ traffic_meta_json|safe }}</script>
+    <script type="application/json" id="map-tiles-config">{{ map_tiles_config_json|safe }}</script>
 {% endblock %}
 
 {% block body_scripts %}

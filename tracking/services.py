@@ -203,6 +203,8 @@ VEHICLE_PROFILES: Sequence[Dict[str, str]] = [
         "license_plate": "DHA-2013",
         "device_id": "VTMS-DHK-201",
         "driver": "Rahim Khan",
+        "driver_phone": "+8801712001201",
+        "driver_license": "DL-2013-4521",
         "vehicle_type": "Refrigerated Truck",
     },
     {
@@ -210,6 +212,8 @@ VEHICLE_PROFILES: Sequence[Dict[str, str]] = [
         "license_plate": "DHA-5194",
         "device_id": "VTMS-DHK-202",
         "driver": "Shila Akter",
+        "driver_phone": "+8801712001202",
+        "driver_license": "DL-2015-8390",
         "vehicle_type": "Box Van",
     },
     {
@@ -217,6 +221,8 @@ VEHICLE_PROFILES: Sequence[Dict[str, str]] = [
         "license_plate": "DHA-8821",
         "device_id": "VTMS-DHK-203",
         "driver": "Nazmul Islam",
+        "driver_phone": "+8801712001203",
+        "driver_license": "DL-2012-9911",
         "vehicle_type": "Flatbed",
     },
     {
@@ -224,6 +230,8 @@ VEHICLE_PROFILES: Sequence[Dict[str, str]] = [
         "license_plate": "DHA-3307",
         "device_id": "VTMS-DHK-204",
         "driver": "Farzana Chowdhury",
+        "driver_phone": "+8801712001204",
+        "driver_license": "DL-2016-2205",
         "vehicle_type": "Tanker",
     },
     {
@@ -231,6 +239,8 @@ VEHICLE_PROFILES: Sequence[Dict[str, str]] = [
         "license_plate": "DHA-7742",
         "device_id": "VTMS-DHK-205",
         "driver": "Masud Karim",
+        "driver_phone": "+8801712001205",
+        "driver_license": "DL-2014-6754",
         "vehicle_type": "Mini Truck",
     },
     {
@@ -238,6 +248,8 @@ VEHICLE_PROFILES: Sequence[Dict[str, str]] = [
         "license_plate": "DHA-4410",
         "device_id": "VTMS-DHK-206",
         "driver": "Sadia Rahman",
+        "driver_phone": "+8801712001206",
+        "driver_license": "DL-2017-1348",
         "vehicle_type": "Delivery Van",
     },
     {
@@ -245,6 +257,8 @@ VEHICLE_PROFILES: Sequence[Dict[str, str]] = [
         "license_plate": "DHA-9145",
         "device_id": "VTMS-DHK-207",
         "driver": "Tariq Ahmed",
+        "driver_phone": "+8801712001207",
+        "driver_license": "DL-2011-5577",
         "vehicle_type": "Covered Van",
     },
     {
@@ -252,6 +266,8 @@ VEHICLE_PROFILES: Sequence[Dict[str, str]] = [
         "license_plate": "DHA-6259",
         "device_id": "VTMS-DHK-208",
         "driver": "Mitu Sultana",
+        "driver_phone": "+8801712001208",
+        "driver_license": "DL-2018-9022",
         "vehicle_type": "SUV",
     },
     {
@@ -259,6 +275,8 @@ VEHICLE_PROFILES: Sequence[Dict[str, str]] = [
         "license_plate": "DHA-7034",
         "device_id": "VTMS-DHK-209",
         "driver": "Abid Hossain",
+        "driver_phone": "+8801712001209",
+        "driver_license": "DL-2010-4481",
         "vehicle_type": "Motorbike",
     },
     {
@@ -266,6 +284,8 @@ VEHICLE_PROFILES: Sequence[Dict[str, str]] = [
         "license_plate": "DHA-5528",
         "device_id": "VTMS-DHK-210",
         "driver": "Shamima Rupa",
+        "driver_phone": "+8801712001210",
+        "driver_license": "DL-2019-7723",
         "vehicle_type": "Pickup",
     },
 ]
@@ -506,6 +526,8 @@ def generate_vehicle_data(count: int = 10) -> List[Dict]:
                     "license_plate": profile["license_plate"],
                     "device_id": profile["device_id"],
                     "driver": profile["driver"],
+                    "driver_phone": profile.get("driver_phone", ""),
+                    "driver_license": profile.get("driver_license", ""),
                     "vehicle_type": profile["vehicle_type"],
                 },
                 "route": {

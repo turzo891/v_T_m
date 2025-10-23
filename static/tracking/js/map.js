@@ -55,15 +55,155 @@
                   geofences: initialGeofences.map((fence) => ({
                       name: fence.name,
                       color: fence.color,
-                  })),
+                      })),
               };
+    const mapTilesConfig = parseJSONContent("map-tiles-config") || {};
+    const tileProviders = mapTilesConfig.providers || {};
+    const availableProviders = Object.keys(tileProviders);
+    if (!availableProviders.length) {
+        const warning = document.createElement("div");
+        warning.className = "map-error";
+        warning.textContent =
+            "Map tiles unavailable. Configure at least one tile provider.";
+        mapContainer.appendChild(warning);
+        return;
+    }
 
     const mapZoom = typeof center.zoom === "number" ? center.zoom : 12;
     const map = L.map(mapContainer).setView([center.lat, center.lng], mapZoom);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution:
-            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    }).addTo(map);
+
+    let activeTileLayer = null;
+    let activeProviderKey = null;
+
+    function setMapError(message) {
+        let existing = mapContainer.querySelector(".map-error");
+        if (!message) {
+            if (existing) {
+                existing.remove();
+            }
+            return;
+        }
+        if (!existing) {
+            existing = document.createElement("div");
+            existing.className = "map-error";
+            mapContainer.appendChild(existing);
+        }
+        existing.textContent = message;
+    }
+
+    function createMapboxLayer(config) {
+        const token =
+            typeof config.accessToken === "string"
+                ? config.accessToken.trim()
+                : "";
+        if (!token) {
+            return null;
+        }
+        const styleId =
+            typeof config.styleId === "string" && config.styleId.trim()
+                ? config.styleId.trim()
+                : "mapbox/streets-v12";
+        const tileUrl = `https://api.mapbox.com/styles/v1/${styleId}/tiles/{z}/{x}/{y}?access_token=${token}`;
+        return L.tileLayer(tileUrl, {
+            attribution:
+                '&copy; <a href="https://www.mapbox.com/about/maps/">Mapbox</a>',
+            tileSize: 512,
+            zoomOffset: -1,
+            maxZoom: 20,
+        });
+    }
+
+    function createOpenStreetLayer(config) {
+        const tileUrl =
+            typeof config.tileUrl === "string" && config.tileUrl.trim()
+                ? config.tileUrl.trim()
+                : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+        const attribution =
+            typeof config.attribution === "string" &&
+            config.attribution.trim()
+                ? config.attribution.trim()
+                : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+        const options = {
+            attribution,
+        };
+        if (typeof config.maxZoom === "number") {
+            options.maxZoom = config.maxZoom;
+        }
+        return L.tileLayer(tileUrl, options);
+    }
+
+    function buildTileLayer(providerKey) {
+        const config = tileProviders[providerKey];
+        if (!config) {
+            return null;
+        }
+        if (providerKey === "mapbox") {
+            return createMapboxLayer(config);
+        }
+        if (providerKey === "openstreet") {
+            return createOpenStreetLayer(config);
+        }
+        if (config.tileUrl) {
+            return createOpenStreetLayer(config);
+        }
+        return null;
+    }
+
+    function activateTileProvider(providerKey) {
+        const tileLayer = buildTileLayer(providerKey);
+        if (!tileLayer) {
+            setMapError(
+                providerKey === "mapbox"
+                    ? "Map tiles unavailable. Provide a Mapbox access token to render the map."
+                    : "Map tiles unavailable for the selected provider."
+            );
+            return false;
+        }
+
+        if (activeTileLayer) {
+            map.removeLayer(activeTileLayer);
+        }
+        tileLayer.addTo(map);
+        activeTileLayer = tileLayer;
+        activeProviderKey = providerKey;
+        setMapError(null);
+        return true;
+    }
+
+    const storedPreference =
+        typeof window.localStorage !== "undefined"
+            ? window.localStorage.getItem("vtms:tile-provider")
+            : null;
+    let preferredProvider = storedPreference && tileProviders[storedPreference]
+        ? storedPreference
+        : mapTilesConfig.defaultProvider;
+    if (!preferredProvider || !tileProviders[preferredProvider]) {
+        preferredProvider = availableProviders[0];
+    }
+
+    activateTileProvider(preferredProvider);
+
+    const providerSelect = document.getElementById("tile-provider-select");
+    if (providerSelect) {
+        providerSelect.addEventListener("change", (event) => {
+            if (!(event.target instanceof HTMLSelectElement)) {
+                return;
+            }
+            const nextProvider = event.target.value;
+            if (!nextProvider || nextProvider === activeProviderKey) {
+                return;
+            }
+            const success = activateTileProvider(nextProvider);
+            if (success && typeof window.localStorage !== "undefined") {
+                window.localStorage.setItem("vtms:tile-provider", nextProvider);
+            } else if (!success && activeProviderKey) {
+                providerSelect.value = activeProviderKey;
+            }
+        });
+        if (providerSelect.value !== preferredProvider) {
+            providerSelect.value = preferredProvider;
+        }
+    }
     const vehicleCluster = L.markerClusterGroup({
         showCoverageOnHover: false,
         spiderfyOnMaxZoom: true,
@@ -99,6 +239,23 @@
         depots: true,
         traffic: true,
     };
+    let searchTerm = "";
+    let selectedVehicleId = null;
+    let lastFilteredVehicles = [];
+    let lastHighlightedIds = new Set();
+
+    const searchInput = document.getElementById("vehicle-search-input");
+    const detailCard = document.getElementById("vehicle-detail-card");
+    const detailEmpty = document.getElementById("vehicle-detail-empty");
+    const detailContent = document.getElementById("vehicle-detail-content");
+    const detailDriverName = document.getElementById("detail-driver-name");
+    const detailDriverPhone = document.getElementById("detail-driver-phone");
+    const detailDriverLicense = document.getElementById("detail-driver-license");
+    const detailRouteName = document.getElementById("detail-route-name");
+    const detailRouteHistory = document.getElementById("detail-route-history");
+    if (searchInput) {
+        searchTerm = searchInput.value || "";
+    }
 
     function resolveColor(key) {
         if (!key) {
@@ -138,6 +295,109 @@
                 return null;
             })
             .filter(Boolean);
+    }
+
+    function findVehicleById(vehicleId) {
+        if (!Array.isArray(latestVehicles)) {
+            return null;
+        }
+        return latestVehicles.find((vehicle) => vehicle.id === vehicleId) || null;
+    }
+
+    function formatCoordinate(point) {
+        if (!point || typeof point.lat !== "number" || typeof point.lng !== "number") {
+            return null;
+        }
+        const lat = point.lat.toFixed(5);
+        const lng = point.lng.toFixed(5);
+        return `${lat}, ${lng}`;
+    }
+
+    function renderVehicleDetails(vehicle) {
+        if (!detailCard || !detailEmpty || !detailContent) {
+            return;
+        }
+
+        if (!vehicle) {
+            detailCard.classList.remove("is-active");
+            detailContent.hidden = true;
+            detailEmpty.hidden = false;
+            if (detailRouteHistory) {
+                detailRouteHistory.innerHTML =
+                    '<li class="route-history-empty">No route history available.</li>';
+            }
+            return;
+        }
+
+        const identifiers = vehicle.identifiers || {};
+        const driverName = identifiers.driver || "—";
+        const driverPhone = identifiers.driver_phone || "—";
+        const driverLicense = identifiers.driver_license || "—";
+        const routeName = vehicle.route?.name || vehicle.fleet_area || "—";
+
+        detailCard.classList.add("is-active");
+        detailEmpty.hidden = true;
+        detailContent.hidden = false;
+
+        if (detailDriverName) {
+            detailDriverName.textContent = driverName;
+        }
+        if (detailDriverPhone) {
+            detailDriverPhone.textContent = driverPhone;
+        }
+        if (detailDriverLicense) {
+            detailDriverLicense.textContent = driverLicense;
+        }
+        if (detailRouteName) {
+            detailRouteName.textContent = routeName;
+        }
+        if (detailRouteHistory) {
+            const trail = Array.isArray(vehicle.trail) ? vehicle.trail.slice(-5).reverse() : [];
+            if (!trail.length) {
+                detailRouteHistory.innerHTML =
+                    '<li class="route-history-empty">No route history available.</li>';
+            } else {
+                const items = trail
+                    .map((point, index) => {
+                        const label = formatCoordinate(point);
+                        if (!label) {
+                            return null;
+                        }
+                        return `<li><span class="route-history-step">${index + 1}.</span> ${label}</li>`;
+                    })
+                    .filter(Boolean)
+                    .join("");
+                detailRouteHistory.innerHTML = items || '<li class="route-history-empty">No route history available.</li>';
+            }
+        }
+    }
+
+    function selectVehicle(vehicleId) {
+        const normalizedId = Number(vehicleId);
+        if (!Number.isFinite(normalizedId)) {
+            selectedVehicleId = null;
+            renderVehicleDetails(null);
+            return;
+        }
+        const vehicle = findVehicleById(normalizedId);
+        if (!vehicle) {
+            selectedVehicleId = null;
+            renderVehicleDetails(null);
+            return;
+        }
+        selectedVehicleId = normalizedId;
+        renderVehicleDetails(vehicle);
+        if (Array.isArray(lastFilteredVehicles)) {
+            const ids =
+                lastHighlightedIds instanceof Set ? lastHighlightedIds : new Set();
+            updateTable(lastFilteredVehicles, ids);
+        }
+        const updatedRow = document.querySelector(
+            `#vehicle-table tbody tr[data-vehicle-id="${normalizedId}"]`
+        );
+        if (updatedRow instanceof HTMLElement) {
+            updatedRow.focus();
+        }
     }
 
     function ensurePolyline(layer, coordinates, options) {
@@ -392,13 +652,39 @@
     }
 
     function applyFilters(vehicles) {
+        const term = typeof searchTerm === "string" ? searchTerm.trim().toLowerCase() : "";
+        const digitsTerm = term.replace(/\D+/g, "");
+
         return vehicles.filter((vehicle) => {
             const statusMatch =
                 !filterState.status || vehicle.status === filterState.status;
             const fleetMatch =
                 !filterState.fleet_area ||
                 vehicle.fleet_area === filterState.fleet_area;
-            return statusMatch && fleetMatch;
+
+            let searchMatch = true;
+            if (term) {
+                const identifiers = vehicle.identifiers || {};
+                const candidates = [
+                    vehicle.name,
+                    identifiers.driver,
+                    identifiers.vehicle_type,
+                    identifiers.license_plate,
+                    identifiers.device_id,
+                    vehicle.fleet_area,
+                ];
+
+                searchMatch = candidates.some((value) =>
+                    typeof value === "string" && value.toLowerCase().includes(term)
+                );
+
+                if (!searchMatch && digitsTerm) {
+                    const phoneDigits = (identifiers.driver_phone || "").replace(/\D+/g, "");
+                    searchMatch = phoneDigits.includes(digitsTerm);
+                }
+            }
+
+            return statusMatch && fleetMatch && searchMatch;
         });
     }
 
@@ -421,16 +707,20 @@
         if (!tableBody) {
             return;
         }
+        const ids = highlightedIds instanceof Set ? highlightedIds : new Set();
 
         if (!vehicles.length) {
             tableBody.innerHTML =
-                '<tr><td colspan="4">No vehicles match the selected filters.</td></tr>';
+                '<tr><td colspan="5">No vehicles match the selected filters.</td></tr>';
+            selectedVehicleId = null;
+            renderVehicleDetails(null);
             return;
         }
 
         const rows = vehicles
             .map((vehicle) => {
-                const isHighlighted = highlightedIds.has(vehicle.id);
+                const isHighlighted = ids.has(vehicle.id);
+                const isSelected = vehicle.id === selectedVehicleId;
                 const routeName =
                     vehicle.route?.name || vehicle.fleet_area || "—";
                 const speedText =
@@ -444,9 +734,20 @@
                 const routeCell = etaText
                     ? `${routeName}<span class="table-eta">ETA ${etaText} min</span>`
                     : routeName;
+                const driverName =
+                    vehicle.identifiers?.driver && vehicle.identifiers.driver.trim()
+                        ? vehicle.identifiers.driver
+                        : "—";
+                const rowClasses = [
+                    isHighlighted ? "highlight" : "",
+                    isSelected ? "is-selected" : "",
+                ]
+                    .filter(Boolean)
+                    .join(" ");
                 return `
-            <tr class="${isHighlighted ? "highlight" : ""}">
+            <tr data-vehicle-id="${vehicle.id}" class="${rowClasses}" tabindex="0" aria-selected="${isSelected ? "true" : "false"}">
                 <td>${vehicle.name}</td>
+                <td>${driverName}</td>
                 <td>${vehicle.status}</td>
                 <td>${speedText}</td>
                 <td>${routeCell}</td>
@@ -455,6 +756,23 @@
             .join("");
 
         tableBody.innerHTML = rows;
+        tableBody
+            .querySelectorAll("tr[data-vehicle-id]")
+            .forEach((row) => {
+                const vehicleId = Number(row.dataset.vehicleId);
+                if (!Number.isFinite(vehicleId)) {
+                    return;
+                }
+                row.addEventListener("click", () => {
+                    selectVehicle(vehicleId);
+                });
+                row.addEventListener("keydown", (event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        selectVehicle(vehicleId);
+                    }
+                });
+            });
     }
 
     function updateMapLayers(allVehicles, highlightedIds) {
@@ -559,8 +877,26 @@
         const highlightedVehicles = applyFilters(latestVehicles);
         const highlightedIds = new Set(highlightedVehicles.map((v) => v.id));
 
+        if (selectedVehicleId !== null && !highlightedIds.has(selectedVehicleId)) {
+            selectedVehicleId = null;
+            renderVehicleDetails(null);
+        }
+
+        lastFilteredVehicles = highlightedVehicles;
+        lastHighlightedIds = highlightedIds;
+
         updateMapLayers(latestVehicles, highlightedIds);
         updateTable(highlightedVehicles, highlightedIds);
+
+        if (selectedVehicleId !== null) {
+            const selectedVehicle = findVehicleById(selectedVehicleId);
+            if (selectedVehicle) {
+                renderVehicleDetails(selectedVehicle);
+            } else {
+                selectedVehicleId = null;
+                renderVehicleDetails(null);
+            }
+        }
 
         if (timestamp) {
             updateTimestampLabel(timestamp);
@@ -590,6 +926,32 @@
 
                 refreshInterface();
             });
+        });
+    }
+
+    function registerSearch() {
+        if (!searchInput) {
+            return;
+        }
+        let debounceId = null;
+        const handleInput = () => {
+            searchTerm = searchInput.value || "";
+            refreshInterface();
+        };
+        searchInput.addEventListener("input", () => {
+            if (debounceId) {
+                window.clearTimeout(debounceId);
+            }
+            debounceId = window.setTimeout(handleInput, 120);
+        });
+        searchInput.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                if (debounceId) {
+                    window.clearTimeout(debounceId);
+                }
+                handleInput();
+            }
         });
     }
 
@@ -639,6 +1001,7 @@
     renderLegend(legendData);
     registerOverlayControls();
     registerFilters();
+    registerSearch();
     refreshInterface(initialTimestamp);
     renderTraffic(initialTrafficFeatures);
     updateTrafficMeta(initialTrafficMeta);

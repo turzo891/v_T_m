@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 
+from django.conf import settings
 from django.http import JsonResponse
 from django.views.generic import TemplateView, View
 
@@ -32,6 +33,49 @@ class MapView(TemplateView):
             {
                 "source": traffic_snapshot["source"],
                 "generated": traffic_snapshot["generated"],
+            }
+        )
+        mapbox_token = getattr(settings, "MAPBOX_ACCESS_TOKEN", "") or ""
+        mapbox_style = getattr(settings, "MAPBOX_STYLE_ID", "mapbox/streets-v12")
+        openstreet_url = getattr(
+            settings,
+            "OPENSTREET_TILE_URL",
+            "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        )
+        openstreet_attribution = getattr(
+            settings,
+            "OPENSTREET_ATTRIBUTION",
+            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        )
+
+        tile_providers = {}
+        tile_provider_choices = []
+
+        if mapbox_token:
+            tile_providers["mapbox"] = {
+                "accessToken": mapbox_token,
+                "styleId": mapbox_style,
+            }
+            tile_provider_choices.append(
+                {"key": "mapbox", "label": "Mapbox"}
+            )
+
+        tile_providers["openstreet"] = {
+            "tileUrl": openstreet_url,
+            "attribution": openstreet_attribution,
+            "maxZoom": 19,
+        }
+        tile_provider_choices.append(
+            {"key": "openstreet", "label": "OpenStreetMap"}
+        )
+
+        default_provider = "mapbox" if mapbox_token else "openstreet"
+        context["tile_provider_choices"] = tile_provider_choices
+        context["default_tile_provider"] = default_provider
+        context["map_tiles_config_json"] = json.dumps(
+            {
+                "providers": tile_providers,
+                "defaultProvider": default_provider,
             }
         )
         return context
