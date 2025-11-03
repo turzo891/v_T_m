@@ -6,3 +6,4 @@ tzdata>=2024.1; sys_platform == "win32"
 
 # Load environment variables from .env files
 python-dotenv>=1.0,<2.0
+shapely>=2.0,<3.0

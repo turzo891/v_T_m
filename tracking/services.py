@@ -9,6 +9,9 @@ import math
 from datetime import datetime, timezone
 from typing import Dict, List, Sequence, Tuple
 
+from .models import Vehicle
+
+
 BASE_LOCATION: Tuple[float, float] = (23.8103, 90.4125)  # Dhaka, Bangladesh
 EARTH_RADIUS_KM = 6371.0088
 
@@ -197,6 +200,33 @@ ROUTE_DEFINITIONS: Sequence[Dict[str, str]] = [
     },
 ]
 
+
+
+GEOFENCES: Sequence[Dict[str, object]] = [
+    {
+        "id": "motijheel-delivery-zone",
+        "name": "Motijheel Delivery Zone",
+        "color": "#f97316",
+        "points": [
+            {"lat": 23.733, "lng": 90.413},
+            {"lat": 23.733, "lng": 90.425},
+            {"lat": 23.722, "lng": 90.425},
+            {"lat": 23.722, "lng": 90.412},
+        ],
+    },
+    {
+        "id": "gulshan-priority",
+        "name": "Gulshan Priority Service Area",
+        "color": "#10b981",
+        "points": [
+            {"lat": 23.798, "lng": 90.408},
+            {"lat": 23.806, "lng": 90.420},
+            {"lat": 23.798, "lng": 90.432},
+            {"lat": 23.790, "lng": 90.420},
+        ],
+    },
+]
+
 VEHICLE_PROFILES: Sequence[Dict[str, str]] = [
     {
         "callsign": "VT-201",
@@ -224,94 +254,6 @@ VEHICLE_PROFILES: Sequence[Dict[str, str]] = [
         "driver_phone": "+8801712001203",
         "driver_license": "DL-2012-9911",
         "vehicle_type": "Flatbed",
-    },
-    {
-        "callsign": "VT-204",
-        "license_plate": "DHA-3307",
-        "device_id": "VTMS-DHK-204",
-        "driver": "Farzana Chowdhury",
-        "driver_phone": "+8801712001204",
-        "driver_license": "DL-2016-2205",
-        "vehicle_type": "Tanker",
-    },
-    {
-        "callsign": "VT-205",
-        "license_plate": "DHA-7742",
-        "device_id": "VTMS-DHK-205",
-        "driver": "Masud Karim",
-        "driver_phone": "+8801712001205",
-        "driver_license": "DL-2014-6754",
-        "vehicle_type": "Mini Truck",
-    },
-    {
-        "callsign": "VT-206",
-        "license_plate": "DHA-4410",
-        "device_id": "VTMS-DHK-206",
-        "driver": "Sadia Rahman",
-        "driver_phone": "+8801712001206",
-        "driver_license": "DL-2017-1348",
-        "vehicle_type": "Delivery Van",
-    },
-    {
-        "callsign": "VT-207",
-        "license_plate": "DHA-9145",
-        "device_id": "VTMS-DHK-207",
-        "driver": "Tariq Ahmed",
-        "driver_phone": "+8801712001207",
-        "driver_license": "DL-2011-5577",
-        "vehicle_type": "Covered Van",
-    },
-    {
-        "callsign": "VT-208",
-        "license_plate": "DHA-6259",
-        "device_id": "VTMS-DHK-208",
-        "driver": "Mitu Sultana",
-        "driver_phone": "+8801712001208",
-        "driver_license": "DL-2018-9022",
-        "vehicle_type": "SUV",
-    },
-    {
-        "callsign": "VT-209",
-        "license_plate": "DHA-7034",
-        "device_id": "VTMS-DHK-209",
-        "driver": "Abid Hossain",
-        "driver_phone": "+8801712001209",
-        "driver_license": "DL-2010-4481",
-        "vehicle_type": "Motorbike",
-    },
-    {
-        "callsign": "VT-210",
-        "license_plate": "DHA-5528",
-        "device_id": "VTMS-DHK-210",
-        "driver": "Shamima Rupa",
-        "driver_phone": "+8801712001210",
-        "driver_license": "DL-2019-7723",
-        "vehicle_type": "Pickup",
-    },
-]
-
-GEOFENCES: Sequence[Dict[str, object]] = [
-    {
-        "id": "motijheel-delivery-zone",
-        "name": "Motijheel Delivery Zone",
-        "color": "#f97316",
-        "points": [
-            {"lat": 23.733, "lng": 90.413},
-            {"lat": 23.733, "lng": 90.425},
-            {"lat": 23.722, "lng": 90.425},
-            {"lat": 23.722, "lng": 90.412},
-        ],
-    },
-    {
-        "id": "gulshan-priority",
-        "name": "Gulshan Priority Service Area",
-        "color": "#10b981",
-        "points": [
-            {"lat": 23.798, "lng": 90.408},
-            {"lat": 23.806, "lng": 90.420},
-            {"lat": 23.798, "lng": 90.432},
-            {"lat": 23.790, "lng": 90.420},
-        ],
     },
 ]
 
@@ -467,7 +409,10 @@ def generate_vehicle_data(count: int = 10) -> List[Dict]:
     if not ROUTES:
         return vehicles
 
-    for index in range(count):
+    db_vehicles = Vehicle.objects.filter(is_disabled=False)
+    all_vehicles = list(db_vehicles) + VEHICLE_PROFILES
+
+    for index, vehicle_profile in enumerate(all_vehicles):
         route = ROUTES[index % len(ROUTES)]
         loop_seconds = route["loop_seconds"] or 900
         base_speed = route["average_speed_kmh"]
@@ -489,8 +434,27 @@ def generate_vehicle_data(count: int = 10) -> List[Dict]:
         status = _determine_status(progress_fraction, speed_kmh, base_speed)
         trail_points, upcoming_points = _route_segments(route, segment_index, raw_lat, raw_lng)
 
-        profile = VEHICLE_PROFILES[index % len(VEHICLE_PROFILES)]
-        vehicle_key = f"{route['id']}:{profile['device_id']}"
+        if isinstance(vehicle_profile, Vehicle):
+            vehicle_key = f"{route['id']}:{vehicle_profile.vin}"
+            name = vehicle_profile.name
+            license_plate = vehicle_profile.license_plate
+            device_id = vehicle_profile.vin
+            driver = "N/A"
+            driver_phone = ""
+            driver_license = ""
+            vehicle_type = f"{vehicle_profile.make} {vehicle_profile.model}"
+            vehicle_id = vehicle_profile.id
+        else:
+            vehicle_key = f"{route['id']}:{vehicle_profile['device_id']}"
+            name = vehicle_profile["callsign"]
+            license_plate = vehicle_profile["license_plate"]
+            device_id = vehicle_profile["device_id"]
+            driver = vehicle_profile["driver"]
+            driver_phone = vehicle_profile.get("driver_phone", "")
+            driver_license = vehicle_profile.get("driver_license", "")
+            vehicle_type = vehicle_profile["vehicle_type"]
+            vehicle_id = index + 1
+
         filtered_lat, filtered_lng = _filter_position(
             vehicle_key,
             now.timestamp(),
@@ -507,9 +471,9 @@ def generate_vehicle_data(count: int = 10) -> List[Dict]:
 
         vehicles.append(
             {
-                "id": index + 1,
+                "id": vehicle_id,
                 "uid": vehicle_key,
-                "name": profile["callsign"],
+                "name": name,
                 "fleet_area": route["name"],
                 "status": status,
                 "speed_kmh": round(speed_kmh, 1),
@@ -523,12 +487,12 @@ def generate_vehicle_data(count: int = 10) -> List[Dict]:
                 "last_update_epoch": now.timestamp(),
                 "eta_minutes": round(eta_minutes, 1),
                 "identifiers": {
-                    "license_plate": profile["license_plate"],
-                    "device_id": profile["device_id"],
-                    "driver": profile["driver"],
-                    "driver_phone": profile.get("driver_phone", ""),
-                    "driver_license": profile.get("driver_license", ""),
-                    "vehicle_type": profile["vehicle_type"],
+                    "license_plate": license_plate,
+                    "device_id": device_id,
+                    "driver": driver,
+                    "driver_phone": driver_phone,
+                    "driver_license": driver_license,
+                    "vehicle_type": vehicle_type,
                 },
                 "route": {
                     "id": route["id"],

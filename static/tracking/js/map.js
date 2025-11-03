@@ -252,6 +252,7 @@
     const detailDriverPhone = document.getElementById("detail-driver-phone");
     const detailDriverLicense = document.getElementById("detail-driver-license");
     const detailRouteName = document.getElementById("detail-route-name");
+
     const detailRouteHistory = document.getElementById("detail-route-history");
     if (searchInput) {
         searchTerm = searchInput.value || "";
@@ -351,23 +352,32 @@
         if (detailRouteName) {
             detailRouteName.textContent = routeName;
         }
+
         if (detailRouteHistory) {
             const trail = Array.isArray(vehicle.trail) ? vehicle.trail.slice(-5).reverse() : [];
             if (!trail.length) {
                 detailRouteHistory.innerHTML =
                     '<li class="route-history-empty">No route history available.</li>';
             } else {
-                const items = trail
-                    .map((point, index) => {
+                let items = [];
+                (async () => {
+                    for (const [index, point] of trail.entries()) {
                         const label = formatCoordinate(point);
                         if (!label) {
-                            return null;
+                            continue;
                         }
-                        return `<li><span class="route-history-step">${index + 1}.</span> ${label}</li>`;
-                    })
-                    .filter(Boolean)
-                    .join("");
-                detailRouteHistory.innerHTML = items || '<li class="route-history-empty">No route history available.</li>';
+                        try {
+                            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${point.lat}&lon=${point.lng}`);
+                            const data = await response.json();
+                            const locationName = data.display_name;
+                            items.push(`<li><span class="route-history-step">${index + 1}.</span> ${label} - ${locationName}</li>`);
+                        } catch (error) {
+                            console.error('Error fetching location name:', error);
+                            items.push(`<li><span class="route-history-step">${index + 1}.</span> ${label}</li>`);
+                        }
+                    }
+                    detailRouteHistory.innerHTML = items.join('') || '<li class="route-history-empty">No route history available.</li>';
+                })();
             }
         }
     }
@@ -1006,7 +1016,40 @@
     renderTraffic(initialTrafficFeatures);
     updateTrafficMeta(initialTrafficMeta);
     pollTimeoutId = window.setTimeout(pollVehicles, POLL_INTERVAL_MS);
-    trafficTimeoutId = window.setTimeout(pollTraffic, 2000);
+    let selectingStart = true;
+    let startCoords = null;
+    let endCoords = null;
+
+    const startCoordsEl = document.getElementById("start-coords");
+    const endCoordsEl = document.getElementById("end-coords");
+
+    map.on("click", function (e) {
+        if (selectingStart) {
+            startCoords = e.latlng;
+            startCoordsEl.textContent = `${e.latlng.lat.toFixed(5)}, ${e.latlng.lng.toFixed(5)}`;
+            endCoordsEl.textContent = "-";
+            endCoords = null;
+        } else {
+            endCoords = e.latlng;
+            endCoordsEl.textContent = `${e.latlng.lat.toFixed(5)}, ${e.latlng.lng.toFixed(5)}`;
+        }
+        selectingStart = !selectingStart;
+    });
+
+    const findRouteBtn = document.getElementById("find-route-btn");
+    findRouteBtn.addEventListener("click", function () {
+        if (startCoords && endCoords) {
+            const url = `/find-route/?start_lat=${startCoords.lat}&start_lng=${startCoords.lng}&end_lat=${endCoords.lat}&end_lng=${endCoords.lng}`;
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    const path = data.path.map(coord => [coord[0], coord[1]]);
+                    L.polyline(path, { color: 'blue' }).addTo(map);
+                });
+        }
+    });
+
+
 
     window.addEventListener("beforeunload", () => {
         if (pollTimeoutId) {

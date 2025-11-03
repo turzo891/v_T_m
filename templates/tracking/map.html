@@ -54,6 +54,14 @@
                     <span>Traffic</span>
                 </label>
             </div>
+            <div class="route-finder">
+                <h3>Find Route</h3>
+                <div>
+                    <p>Start: <span id="start-coords">-</span></p>
+                    <p>End: <span id="end-coords">-</span></p>
+                </div>
+                <button id="find-route-btn">Find Route</button>
+            </div>
         </aside>
         <section class="tracking-map-section">
             <div id="map" class="tracking-map" aria-live="polite">
@@ -71,7 +79,7 @@
                         type="search"
                         id="vehicle-search-input"
                         name="vehicle-search"
-                        placeholder="Search by vehicle, driver, or mobile number"
+                        placeholder="Search by vehicle, driver, make, model, or license plate"
                         autocomplete="off"
                     >
                 </div>
@@ -81,6 +89,7 @@
                             <tr>
                                 <th>Vehicle</th>
                                 <th>Driver</th>
+
                                 <th>Status</th>
                                 <th>Speed (km/h)</th>
                                 <th>Route</th>
@@ -91,6 +100,7 @@
                             <tr>
                                 <td>{{ vehicle.name }}</td>
                                 <td>{{ vehicle.identifiers.driver|default:"—" }}</td>
+
                                 <td>{{ vehicle.status }}</td>
                                 <td>{{ vehicle.speed_kmh }}</td>
                                 <td>{{ vehicle.fleet_area }}</td>
@@ -122,6 +132,7 @@
                                 <dt>Current Route</dt>
                                 <dd id="detail-route-name">—</dd>
                             </div>
+                            
                         </dl>
                         <div class="vehicle-route-history">
                             <h4>Route History</h4>

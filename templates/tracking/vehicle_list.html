@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <h2>Vehicle List</h2>
+  <a href="{% url 'tracking:add-vehicle' %}">Add Vehicle</a>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>License Plate</th>
+        <th>Make</th>
+        <th>Model</th>
+        <th>Year</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for vehicle in object_list %}
+        <tr>
+          <td>{{ vehicle.name }}</td>
+          <td>{{ vehicle.license_plate }}</td>
+          <td>{{ vehicle.make }}</td>
+          <td>{{ vehicle.model }}</td>
+          <td>{{ vehicle.year }}</td>
+          <td>
+            <a href="{% url 'tracking:edit-vehicle' vehicle.pk %}">Edit</a>
+            <form method="post" action="{% url 'tracking:disable-vehicle' vehicle.pk %}" style="display: inline;">
+              {% csrf_token %}
+              <button type="submit">{% if vehicle.is_disabled %}Enable{% else %}Disable{% endif %}</button>
+            </form>
+            <form method="post" action="{% url 'tracking:delete-vehicle' vehicle.pk %}" style="display: inline;">
+              {% csrf_token %}
+              <button type="submit">Delete</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}
