@@ -8,97 +8,95 @@ import json
 import logging
 from datetime import datetime, timezone
 from typing import Dict, List, Tuple
-from urllib.error import URLError
-from urllib.parse import urlencode
-from urllib.request import urlopen
+import requests
 
 from django.conf import settings
 
 LOGGER = logging.getLogger(__name__)
 
-DHAKA_BBOX: Tuple[float, float, float, float] = (
-    23.70,
-    90.35,
-    23.92,
-    90.55,
+DHAKA_BBOX: Tuple[float, float, float, float] = (   #for dhaka city bounding box
+    90.30, # min long
+    23.70, # min lat
+    90.50, # max long
+    23.90, # max lat
 )
 
 
 def get_traffic_snapshot() -> Dict:
-    """
-    Return a feature collection describing current traffic incidents.
-    """
     provider = settings.TRAFFIC_CONFIG.get("provider", "").lower()
     if provider == "tomtom":
-        incidents = _tomtom_incidents()
+        features = _tomtom_flow_segments()
     else:
-        incidents = []
+        features = []
 
-    if not incidents:
-        incidents = _fallback_segments()
+    if not features:
+        features = _fallback_segments()
         source = "fallback-sample"
     else:
         source = provider
 
     return {
         "source": source,
-        "features": incidents,
+        "features": features,
         "generated": datetime.now(timezone.utc).isoformat(),
     }
 
 
-def _tomtom_incidents() -> List[Dict]:
+def _tomtom_flow_segments() -> List[Dict]:
     api_key = settings.TRAFFIC_CONFIG.get("tomtom_api_key")
     if not api_key:
         return []
 
-    params = {
-        "key": api_key,
-        "bbox": ",".join(str(coord) for coord in DHAKA_BBOX),
-        "fields": "incidents{type,geometry{type,coordinates},properties{iconCategory,events{description},startTime,endTime,severity}}",
-        "language": "en-US",
-        "timeValidityFilter": "ACTIVE",
-    }
+    # Use the bounding box version of the flowSegmentData API
+    # Note: The API expects lon,lat,lon,lat format
+    bbox_str = f"{DHAKA_BBOX[0]},{DHAKA_BBOX[1]},{DHAKA_BBOX[2]},{DHAKA_BBOX[3]}"
+    url = f"https://api.tomtom.com/traffic/services/4/flowSegmentData/absolute/10/json?key={api_key}&bbox={bbox_str}"
 
-    url = f"https://api.tomtom.com/traffic/services/5/incidentDetails?{urlencode(params)}"
+    LOGGER.info(f"Requesting TomTom traffic with URL: {url}")
+
     try:
-        with urlopen(url, timeout=settings.TRAFFIC_CONFIG.get("timeout_seconds", 4)) as response:
-            payload = json.load(response)
-    except (URLError, TimeoutError, json.JSONDecodeError) as error:
-        LOGGER.warning("Traffic feed request failed: %s", error)
+        response = requests.get(url, timeout=settings.TRAFFIC_CONFIG.get("timeout_seconds", 5))
+        response.raise_for_status()
+        payload = response.json()
+    except (requests.exceptions.RequestException, json.JSONDecodeError) as error:
+        LOGGER.warning("TomTom traffic flow request failed: %s", error)
         return []
 
-    incidents: List[Dict] = []
-    for entry in payload.get("incidents", []):
-        geometry = entry.get("geometry", {})
-        coordinates = geometry.get("coordinates", [])
+    features: List[Dict] = []
+    if not payload or 'flowSegmentData' not in payload:
+        return features
+
+    for segment in payload['flowSegmentData']:
+        coordinates = [[p['longitude'], p['latitude']] for p in segment.get('coordinates', {}).get('coordinate', [])]
         if not coordinates:
             continue
 
-        severity = entry.get("properties", {}).get("severity", "UNKNOWN")
-        description = _assemble_description(entry)
-        incidents.append(
+        free_flow_speed = segment.get('freeFlowSpeed', 100)
+        current_speed = segment.get('currentSpeed', 100)
+
+        if free_flow_speed > 0:
+            ratio = current_speed / free_flow_speed
+            if ratio < 0.4:
+                severity = "HEAVY"
+            elif ratio < 0.8:
+                severity = "MODERATE"
+            else:
+                severity = "LIGHT"
+        else:
+            severity = "LIGHT"
+
+        features.append(
             {
-                "type": geometry.get("type", "LineString"),
+                "type": "LineString",
                 "coordinates": coordinates,
                 "severity": severity,
-                "description": description,
+                "description": f"Current Speed: {current_speed} km/h",
             }
         )
-    return incidents
-
-
-def _assemble_description(entry: Dict) -> str:
-    props = entry.get("properties", {})
-    events = props.get("events", [])
-    parts = [event.get("description") for event in events if event.get("description")]
-    return " | ".join(parts) or "Traffic incident"
+    return features
 
 
 def _fallback_segments() -> List[Dict]:
-    """
-    Lightweight mocked data that highlights a few busy Dhaka routes.
-    """
     return [
         {
             "type": "LineString",

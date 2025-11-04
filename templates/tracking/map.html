@@ -59,8 +59,18 @@
                 <div>
                     <p>Start: <span id="start-coords">-</span></p>
                     <p>End: <span id="end-coords">-</span></p>
+                    <p>Distance: <span id="route-distance">--</span> km</p>
                 </div>
                 <button id="find-route-btn">Find Route</button>
+                <div id="assign-vehicle-controls" hidden>
+                    <hr>
+                    <label for="idle-vehicle-select">Assign Idle Vehicle:</label>
+                    <select id="idle-vehicle-select">
+                        <option value="">-- Select Vehicle --</option>
+                    </select>
+                    <button id="assign-vehicle-btn">Assign</button>
+                    <p id="assign-status-msg"></p>
+                </div>
             </div>
         </aside>
         <section class="tracking-map-section">

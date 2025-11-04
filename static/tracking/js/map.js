@@ -1022,6 +1022,30 @@
 
     const startCoordsEl = document.getElementById("start-coords");
     const endCoordsEl = document.getElementById("end-coords");
+    const routeDistanceEl = document.getElementById("route-distance");
+    const assignVehicleControls = document.getElementById("assign-vehicle-controls");
+    const idleVehicleSelect = document.getElementById("idle-vehicle-select");
+    const assignVehicleBtn = document.getElementById("assign-vehicle-btn");
+    const assignStatusMsg = document.getElementById("assign-status-msg");
+
+    async function loadIdleVehicles() {
+        try {
+            const response = await fetch("/api/idle-vehicles/");
+            if (!response.ok) {
+                throw new Error(`Bad response: ${response.status}`);
+            }
+            const vehicles = await response.json();
+            idleVehicleSelect.innerHTML = '<option value="">-- Select Vehicle --</option>'; // Clear existing
+            vehicles.forEach(vehicle => {
+                const option = document.createElement('option');
+                option.value = vehicle.id;
+                option.textContent = vehicle.name;
+                idleVehicleSelect.appendChild(option);
+            });
+        } catch (error) {
+            console.error("Failed to load idle vehicles:", error);
+        }
+    }
 
     map.on("click", function (e) {
         if (selectingStart) {
@@ -1029,6 +1053,7 @@
             startCoordsEl.textContent = `${e.latlng.lat.toFixed(5)}, ${e.latlng.lng.toFixed(5)}`;
             endCoordsEl.textContent = "-";
             endCoords = null;
+            assignVehicleControls.hidden = true; // Hide on new selection
         } else {
             endCoords = e.latlng;
             endCoordsEl.textContent = `${e.latlng.lat.toFixed(5)}, ${e.latlng.lng.toFixed(5)}`;
@@ -1037,19 +1062,80 @@
     });
 
     const findRouteBtn = document.getElementById("find-route-btn");
+    const routeLayer = L.layerGroup().addTo(map);
     findRouteBtn.addEventListener("click", function () {
         if (startCoords && endCoords) {
+            assignVehicleControls.hidden = true;
+            assignStatusMsg.textContent = '';
             const url = `/find-route/?start_lat=${startCoords.lat}&start_lng=${startCoords.lng}&end_lat=${endCoords.lat}&end_lng=${endCoords.lng}`;
             fetch(url)
                 .then(response => response.json())
                 .then(data => {
-                    const path = data.path.map(coord => [coord[0], coord[1]]);
-                    L.polyline(path, { color: 'blue' }).addTo(map);
+                    routeLayer.clearLayers();
+                    if (data.path && data.path.length > 0) {
+                        const path = data.path.map(coord => [coord[0], coord[1]]);
+                        L.polyline(path, { color: 'blue', weight: 5, opacity: 0.8 }).addTo(routeLayer);
+                        if (routeDistanceEl && typeof data.distance === 'number') {
+                            routeDistanceEl.textContent = data.distance;
+                        }
+                        assignVehicleControls.hidden = false; // Show controls
+                    } else {
+                        if (routeDistanceEl) {
+                            routeDistanceEl.textContent = '--';
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error finding route:', error);
+                    if (routeDistanceEl) {
+                        routeDistanceEl.textContent = 'Error';
+                    }
                 });
         }
     });
 
+    assignVehicleBtn.addEventListener("click", async function() {
+        const vehicleId = idleVehicleSelect.value;
+        if (!vehicleId) {
+            assignStatusMsg.textContent = "Please select a vehicle.";
+            return;
+        }
+        if (!startCoords) {
+            assignStatusMsg.textContent = "Cannot assign without a starting point.";
+            return;
+        }
 
+        assignStatusMsg.textContent = "Assigning...";
+
+        try {
+            const response = await fetch('/api/assign-vehicle/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    vehicle_id: vehicleId,
+                    lat: startCoords.lat,
+                    lng: startCoords.lng,
+                }),
+            });
+
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result.error || 'Failed to assign vehicle');
+            }
+
+            assignStatusMsg.textContent = result.message || 'Vehicle assigned successfully!';
+            pollVehicles(); // Refresh map data immediately
+            loadIdleVehicles(); // Refresh idle vehicle list
+
+        } catch (error) {
+            assignStatusMsg.textContent = error.message;
+            console.error("Error assigning vehicle:", error);
+        }
+    });
+
+    loadIdleVehicles(); // Initial load
 
     window.addEventListener("beforeunload", () => {
         if (pollTimeoutId) {

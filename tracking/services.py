@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import bisect
 import math
+import random
 from datetime import datetime, timezone
 from typing import Dict, List, Sequence, Tuple
 
@@ -402,7 +403,7 @@ def _filter_position(vehicle_key: str, timestamp: float, lat: float, lng: float)
 
 def generate_vehicle_data(count: int = 10) -> List[Dict]:
     """
-    Produce pseudo-real-time vehicle updates moving along mapped routes.
+    Produce a snapshot of vehicles based on their state in the database.
     """
     now = datetime.now(timezone.utc)
     vehicles: List[Dict] = []
@@ -410,95 +411,59 @@ def generate_vehicle_data(count: int = 10) -> List[Dict]:
         return vehicles
 
     db_vehicles = Vehicle.objects.filter(is_disabled=False)
-    all_vehicles = list(db_vehicles) + VEHICLE_PROFILES
 
-    for index, vehicle_profile in enumerate(all_vehicles):
-        route = ROUTES[index % len(ROUTES)]
-        loop_seconds = route["loop_seconds"] or 900
-        base_speed = route["average_speed_kmh"]
+    for vehicle in db_vehicles:
+        # Associate a route for display purposes, can be improved later
+        route = ROUTES[vehicle.id % len(ROUTES)]
 
-        phase_offset = index * 180  # seconds
-        progress_seconds = (now.timestamp() + phase_offset) % loop_seconds
-        progress_fraction = progress_seconds / loop_seconds
-        target_distance = progress_fraction * route["length_km"]
+        speed_kmh = 0
+        trail = []
+        # Simulate speed and trail for 'en_route' vehicles
+        if vehicle.status == 'en_route':
+            speed_kmh = random.randint(30, 60)
+            # Simulate a short, recent trail leading to the current position
+            trail = [{
+                'lat': vehicle.latitude - (i * random.uniform(0.0001, 0.0005)),
+                'lng': vehicle.longitude - (i * random.uniform(0.0001, 0.0005)),
+            } for i in range(5, 0, -1)]
+            trail.append({'lat': vehicle.latitude, 'lng': vehicle.longitude})
 
-        raw_lat, raw_lng, segment_index = _interpolate_position(route, target_distance)
-        heading = _route_heading(route, segment_index, raw_lat, raw_lng)
 
-        speed_variation = 6 * math.sin((now.timestamp() / 90.0) + index * 0.7)
-        speed_kmh = max(base_speed + speed_variation, 8.0)
-
-        remaining_km = max(route["length_km"] - target_distance, 0.02)
-        eta_minutes = (remaining_km / max(speed_kmh, 5.0)) * 60
-
-        status = _determine_status(progress_fraction, speed_kmh, base_speed)
-        trail_points, upcoming_points = _route_segments(route, segment_index, raw_lat, raw_lng)
-
-        if isinstance(vehicle_profile, Vehicle):
-            vehicle_key = f"{route['id']}:{vehicle_profile.vin}"
-            name = vehicle_profile.name
-            license_plate = vehicle_profile.license_plate
-            device_id = vehicle_profile.vin
-            driver = "N/A"
-            driver_phone = ""
-            driver_license = ""
-            vehicle_type = f"{vehicle_profile.make} {vehicle_profile.model}"
-            vehicle_id = vehicle_profile.id
-        else:
-            vehicle_key = f"{route['id']}:{vehicle_profile['device_id']}"
-            name = vehicle_profile["callsign"]
-            license_plate = vehicle_profile["license_plate"]
-            device_id = vehicle_profile["device_id"]
-            driver = vehicle_profile["driver"]
-            driver_phone = vehicle_profile.get("driver_phone", "")
-            driver_license = vehicle_profile.get("driver_license", "")
-            vehicle_type = vehicle_profile["vehicle_type"]
-            vehicle_id = index + 1
-
-        filtered_lat, filtered_lng = _filter_position(
-            vehicle_key,
-            now.timestamp(),
-            raw_lat,
-            raw_lng,
-        )
-
-        filtered_point = {"lat": round(filtered_lat, 6), "lng": round(filtered_lng, 6)}
-        raw_point = {"lat": round(raw_lat, 6), "lng": round(raw_lng, 6)}
-        if trail_points:
-            trail_points[-1] = filtered_point
-        if upcoming_points:
-            upcoming_points[0] = filtered_point
+        # Use the real driver name or fall back to 'N/A'
+        driver_name = vehicle.driver_name or "N/A"
+        driver_phone = vehicle.driver_phone or ""
+        driver_license = vehicle.driver_license or ""
 
         vehicles.append(
             {
-                "id": vehicle_id,
-                "uid": vehicle_key,
-                "name": name,
+                "id": vehicle.id,
+                "uid": f"db_vehicle:{vehicle.vin}",
+                "name": vehicle.name,
                 "fleet_area": route["name"],
-                "status": status,
-                "speed_kmh": round(speed_kmh, 1),
-                "heading": round(heading, 1),
-                "location": filtered_point,
-                "raw_location": raw_point,
-                "trail": trail_points,
-                "upcoming": upcoming_points,
+                "status": vehicle.get_status_display(),
+                "speed_kmh": speed_kmh,
+                "heading": 0,  # Simplified for now
+                "location": {"lat": vehicle.latitude, "lng": vehicle.longitude},
+                "raw_location": {"lat": vehicle.latitude, "lng": vehicle.longitude},
+                "trail": trail,
+                "upcoming": [], # Simplified for now
                 "path": route["point_dicts"],
                 "last_update": now.isoformat(),
                 "last_update_epoch": now.timestamp(),
-                "eta_minutes": round(eta_minutes, 1),
+                "eta_minutes": 0, # Simplified for now
                 "identifiers": {
-                    "license_plate": license_plate,
-                    "device_id": device_id,
-                    "driver": driver,
+                    "license_plate": vehicle.license_plate,
+                    "device_id": vehicle.vin,
+                    "driver": driver_name,
                     "driver_phone": driver_phone,
                     "driver_license": driver_license,
-                    "vehicle_type": vehicle_type,
+                    "vehicle_type": f"{vehicle.make} {vehicle.model}",
                 },
                 "route": {
                     "id": route["id"],
                     "name": route["name"],
                     "color": route["color"],
-                    "progress": round(progress_fraction, 3),
+                    "progress": 0,
                     "distance_km": round(route["length_km"], 2),
                     "origin": route["origin"],
                     "destination": route["destination"],

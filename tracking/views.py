@@ -115,9 +115,8 @@ class VehicleDisableView(View):
         vehicle.save()
         return redirect('tracking:vehicle-list')
 
-from .services import ROUTE_DEFINITIONS, haversine_km
-from .pathfinder import build_graph_from_routes, dijkstra
-from .services import ROUTE_DEFINITIONS
+import requests
+from .services import haversine_km
 
 import logging
 
@@ -130,48 +129,71 @@ class FindRouteView(View):
         end_lat = float(request.GET.get('end_lat'))
         end_lng = float(request.GET.get('end_lng'))
 
-        logger.info(f"Finding route from ({start_lat}, {start_lng}) to ({end_lat}, {end_lng})")
+        logger.info(f"Finding route from ({start_lat}, {start_lng}) to ({end_lat}, {end_lng}) using OSRM")
 
-        graph = build_graph_from_routes(ROUTE_DEFINITIONS)
+        # OSRM API URL
+        osrm_url = f"http://router.project-osrm.org/route/v1/driving/{start_lng},{start_lat};{end_lng},{end_lat}?overview=full&geometries=geojson"
 
-        start_node = None
-        min_dist_start = float('inf')
-        for node in graph.nodes:
-            dist = haversine_km((start_lat, start_lng), node)
-            if dist < min_dist_start:
-                min_dist_start = dist
-                start_node = node
+        try:
+            response = requests.get(osrm_url)
+            response.raise_for_status()  # Raise an exception for bad status codes
+            data = response.json()
 
-        end_node = None
-        min_dist_end = float('inf')
-        for node in graph.nodes:
-            dist = haversine_km((end_lat, end_lng), node)
-            if dist < min_dist_end:
-                min_dist_end = dist
-                end_node = node
+            if data.get('code') == 'Ok' and data.get('routes'):
+                route = data['routes'][0]
+                # Extract coordinates and flip them for Leaflet ([lat, lon])
+                route_coords = route['geometry']['coordinates']
+                path = [[coord[1], coord[0]] for coord in route_coords]
 
-        logger.info(f"Start node: {start_node}")
-        logger.info(f"End node: {end_node}")
+                # Extract distance in meters, convert to km, and round it
+                distance_km = round(route['distance'] / 1000, 2)
 
-        if not start_node or not end_node:
-            return JsonResponse({'path': []})
+                logger.info(f"Successfully found route with {len(path)} points and distance {distance_km} km.")
+                return JsonResponse({'path': path, 'distance': distance_km})
+            else:
+                logger.error(f"OSRM API could not find a route. Response: {data}")
+                return JsonResponse({'path': [], 'error': 'Route not found'}, status=404)
 
-        visited, path = dijkstra(graph, start_node)
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error calling OSRM API: {e}")
+            return JsonResponse({'path': [], 'error': 'Error contacting routing service'}, status=500)
 
-        shortest_path = []
-        current_node = end_node
-        while current_node != start_node:
-            shortest_path.append(current_node)
-            if current_node not in path:
-                logger.error(f"Could not find path from {start_node} to {end_node}")
-                return JsonResponse({'path': []})
-            current_node = path[current_node]
-        shortest_path.append(start_node)
-        shortest_path.reverse()
 
-        logger.info(f"Shortest path: {shortest_path}")
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 
-        return JsonResponse({'path': shortest_path})
+class IdleVehicleListView(View):
+    def get(self, request, *args, **kwargs):
+        idle_vehicles = Vehicle.objects.filter(status='idle', is_disabled=False).values('id', 'name')
+        return JsonResponse(list(idle_vehicles), safe=False)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class AssignVehicleView(View):
+    def post(self, request, *args, **kwargs):
+        try:
+            data = json.loads(request.body)
+            vehicle_id = data.get('vehicle_id')
+            lat = data.get('lat')
+            lng = data.get('lng')
+
+            if not all([vehicle_id, lat, lng]):
+                return JsonResponse({'error': 'Missing data'}, status=400)
+
+            vehicle = Vehicle.objects.get(pk=vehicle_id)
+            vehicle.latitude = lat
+            vehicle.longitude = lng
+            vehicle.status = 'en_route'
+            vehicle.save()
+
+            return JsonResponse({'success': True, 'message': f'Vehicle {vehicle.name} assigned.'})
+        except Vehicle.DoesNotExist:
+            return JsonResponse({'error': 'Vehicle not found'}, status=404)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+        except Exception as e:
+            logger.error(f"Error assigning vehicle: {e}")
+            return JsonResponse({'error': 'An unexpected error occurred'}, status=500)
+
 
 class VehicleDataAPIView(View):
     def get(self, request, *args, **kwargs):
