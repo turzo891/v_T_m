@@ -1,0 +1,101 @@
+{
+  "info": {
+    "name": "Vehicle Tracking Mobile App",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Update Vehicle Location",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"vehicle_id\": 1,\n  \"lat\": 40.7128,\n  \"lng\": -74.0060\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/vehicles/location/",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "vehicles",
+            "location",
+            ""
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Update Vehicle Status",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"vehicle_id\": 1,\n  \"status\": \"en_route\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/vehicles/status/",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "vehicles",
+            "status",
+            ""
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get Assigned Route",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"vehicle_id\": 1\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/vehicles/route/",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "vehicles",
+            "route",
+            ""
+          ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:8000"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "builds": [
+    {
+      "src": "vehicle_tracking_management_system/asgi.py",
+      "use": "@vercel/python",
+      "config": {
+        "maxLambdaSize": "15mb",
+        "runtime": "python3.9"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "vehicle_tracking_management_system/asgi.py"
+    }
+  ]
+}

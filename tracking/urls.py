@@ -2,7 +2,7 @@ from django.urls import path
 from .views import (
     MapView, TrafficDataAPIView, VehicleDataAPIView, VehicleListView, 
     VehicleCreateView, VehicleUpdateView, VehicleDeleteView, VehicleDisableView, 
-    FindRouteView, IdleVehicleListView, AssignVehicleView
+    FindRouteView, IdleVehicleListView, AssignVehicleView, VehicleLocationAPIView, VehicleStatusAPIView, AssignedRouteAPIView
 )
 
 app_name = "tracking"
@@ -16,7 +16,10 @@ urlpatterns = [
     path("vehicles/<int:pk>/disable/", VehicleDisableView.as_view(), name="disable-vehicle"),
     path("find-route/", FindRouteView.as_view(), name="find-route"),
     path("api/vehicles/", VehicleDataAPIView.as_view(), name="vehicle-data"),
+    path("api/vehicles/location/", VehicleLocationAPIView.as_view(), name="vehicle-location"),
+    path("api/vehicles/status/", VehicleStatusAPIView.as_view(), name="vehicle-status"),
     path("api/traffic/", TrafficDataAPIView.as_view(), name="traffic-data"),
     path("api/idle-vehicles/", IdleVehicleListView.as_view(), name="idle-vehicles"),
     path("api/assign-vehicle/", AssignVehicleView.as_view(), name="assign-vehicle"),
+    path("api/vehicles/route/", AssignedRouteAPIView.as_view(), name="assigned-route"),
 ]

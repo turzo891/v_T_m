@@ -9,7 +9,7 @@ from django.shortcuts import redirect
 from django.urls import reverse_lazy
 
 
-from .models import Vehicle
+from .models import Vehicle, Route
 from .forms import VehicleForm
 
 
@@ -192,6 +192,86 @@ class AssignVehicleView(View):
             return JsonResponse({'error': 'Invalid JSON'}, status=400)
         except Exception as e:
             logger.error(f"Error assigning vehicle: {e}")
+            return JsonResponse({'error': 'An unexpected error occurred'}, status=500)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class VehicleLocationAPIView(View):
+    def put(self, request, *args, **kwargs):
+        try:
+            data = json.loads(request.body)
+            vehicle_id = data.get('vehicle_id')
+            lat = data.get('lat')
+            lng = data.get('lng')
+
+            if not all([vehicle_id, lat, lng]):
+                return JsonResponse({'error': 'Missing vehicle_id, latitude, or longitude'}, status=400)
+
+            vehicle = Vehicle.objects.get(pk=vehicle_id)
+            vehicle.latitude = lat
+            vehicle.longitude = lng
+            vehicle.save()
+
+            return JsonResponse({'success': True, 'message': f'Vehicle {vehicle.name} location updated.'})
+        except Vehicle.DoesNotExist:
+            return JsonResponse({'error': 'Vehicle not found'}, status=404)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+        except Exception as e:
+            logger.error(f"Error updating vehicle location: {e}")
+            return JsonResponse({'error': 'An unexpected error occurred'}, status=500)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class VehicleStatusAPIView(View):
+    def put(self, request, *args, **kwargs):
+        try:
+            data = json.loads(request.body)
+            vehicle_id = data.get('vehicle_id')
+            status = data.get('status')
+
+            if not all([vehicle_id, status]):
+                return JsonResponse({'error': 'Missing vehicle_id or status'}, status=400)
+
+            vehicle = Vehicle.objects.get(pk=vehicle_id)
+            vehicle.status = status
+            vehicle.save()
+
+            return JsonResponse({'success': True, 'message': f'Vehicle {vehicle.name} status updated.'})
+        except Vehicle.DoesNotExist:
+            return JsonResponse({'error': 'Vehicle not found'}, status=404)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+        except Exception as e:
+            logger.error(f"Error updating vehicle status: {e}")
+            return JsonResponse({'error': 'An unexpected error occurred'}, status=500)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class AssignedRouteAPIView(View):
+    def post(self, request, *args, **kwargs):
+        try:
+            data = json.loads(request.body)
+            vehicle_id = data.get('vehicle_id')
+
+            if not vehicle_id:
+                return JsonResponse({'error': 'Missing vehicle_id'}, status=400)
+
+            vehicle = Vehicle.objects.get(pk=vehicle_id)
+
+            if vehicle.assigned_route:
+                try:
+                    path_data = json.loads(vehicle.assigned_route.path)
+                    return JsonResponse({'path': path_data})
+                except json.JSONDecodeError:
+                    return JsonResponse({'error': 'Error decoding route path'}, status=500)
+            else:
+                return JsonResponse({'path': []})
+        except Vehicle.DoesNotExist:
+            return JsonResponse({'error': 'Vehicle not found'}, status=404)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+        except Exception as e:
+            logger.error(f"Error retrieving assigned route: {e}")
             return JsonResponse({'error': 'An unexpected error occurred'}, status=500)
 
 

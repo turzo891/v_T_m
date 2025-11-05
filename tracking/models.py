@@ -1,5 +1,12 @@
 from django.db import models
 
+class Route(models.Model):
+    name = models.CharField(max_length=100)
+    path = models.TextField()  # Storing the route as a JSON string of coordinates
+
+    def __str__(self):
+        return self.name
+
 class Vehicle(models.Model):
     STATUS_CHOICES = [
         ('idle', 'Idle'),
@@ -19,6 +26,7 @@ class Vehicle(models.Model):
     driver_name = models.CharField(max_length=100, blank=True, default='')
     driver_phone = models.CharField(max_length=20, blank=True, default='')
     driver_license = models.CharField(max_length=50, blank=True, default='')
+    assigned_route = models.ForeignKey(Route, on_delete=models.SET_NULL, null=True, blank=True)
 
     def __str__(self):
         return self.name
